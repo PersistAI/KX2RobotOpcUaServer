@@ -201,15 +201,23 @@ namespace LabEquipmentOpcUa
             // Create the server
             _server = new StandardServer();
 
-            // NOW create and add the node managers (after _server and _config are initialized)
-            _equipmentManagers.Add(new KX2RobotOpcUa.KX2RobotNodeManager(this));
-            // Future equipment can be added here:
-            // _equipmentManagers.Add(new TecanOpcUa.TecanNodeManager(this));
+            // Create node managers differently using factories
+            var nodeManagerFactories = new List<INodeManagerFactory>();
 
-            // Add the node managers to the server
-            foreach (var manager in _equipmentManagers)
+            // Create the KX2 robot factory
+            var kx2Factory = new KX2RobotOpcUa.KX2RobotNodeManagerFactory(this);
+            nodeManagerFactories.Add(kx2Factory);
+            _equipmentManagers.Add((IEquipmentNodeManager)kx2Factory);
+
+            // Future equipment can be added here:
+            // var tecanFactory = new TecanOpcUa.TecanNodeManagerFactory(this);
+            // nodeManagerFactories.Add(tecanFactory);
+            // _equipmentManagers.Add((IEquipmentNodeManager)tecanFactory);
+
+            // Add the node manager factories to the server
+            foreach (var factory in nodeManagerFactories)
             {
-                _server.AddNodeManager((INodeManagerFactory)manager);
+                _server.AddNodeManager(factory);
             }
         }
 
@@ -277,7 +285,7 @@ namespace LabEquipmentOpcUa
     /// <summary>
     /// Interface for equipment node managers
     /// </summary>
-    public interface IEquipmentNodeManager : INodeManager
+    public interface IEquipmentNodeManager : INodeManagerFactory
     {
         /// <summary>
         /// Initializes the equipment.
