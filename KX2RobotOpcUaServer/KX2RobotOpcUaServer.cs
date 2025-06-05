@@ -21,6 +21,11 @@ namespace KX2RobotOpcUa
     /// </summary>
     public class KX2RobotNodeManager : CustomNodeManager2, IEquipmentNodeManager, INodeManagerFactory
     {
+        /// <summary>
+        /// The interval in milliseconds for updating robot status.
+        /// Change this value to adjust how frequently the robot status is updated.
+        /// </summary>
+        private const int UPDATE_INTERVAL_MS = 1000;
         #region INodeManagerFactory Implementation
         /// <summary>
         /// Gets the namespace URIs for the node manager.
@@ -88,7 +93,7 @@ namespace KX2RobotOpcUa
                 _lastUsedId = 0;
 
                 // Start a timer to update the robot status
-                _updateTimer = new Timer(UpdateRobotStatus, null, 1000, 1000);
+                _updateTimer = new Timer(UpdateRobotStatus, null, UPDATE_INTERVAL_MS, UPDATE_INTERVAL_MS);
 
                 Console.WriteLine("KX2RobotNodeManager constructor completed successfully");
             }
@@ -182,6 +187,31 @@ namespace KX2RobotOpcUa
                         Console.WriteLine("Creating test variable...");
                         _isInitializedVariable = CreateVariable(_statusFolder, "IsInitialized", "IsInitialized", DataTypeIds.Boolean, ValueRanks.Scalar);
                         _isInitializedVariable.Value = false;
+
+                        // Create commands folder for methods
+                        Console.WriteLine("Creating commands folder...");
+                        _commandsFolder = CreateFolder(_robotFolder, "Commands", "Commands");
+
+                        // Create method nodes and connect them to handlers
+                        Console.WriteLine("Creating method nodes...");
+                        CreateMethod(_commandsFolder, "Initialize", "Initialize", OnInitialize);
+                        CreateMethod(_commandsFolder, "Shutdown", "Shutdown", OnShutdown);
+                        CreateMethod(_commandsFolder, "MoveAbsolute", "MoveAbsolute", OnMoveAbsolute);
+                        CreateMethod(_commandsFolder, "MoveRelative", "MoveRelative", OnMoveRelative);
+                        CreateMethod(_commandsFolder, "LoadTeachPoints", "LoadTeachPoints", OnLoadTeachPoints);
+                        CreateMethod(_commandsFolder, "MoveToTeachPoint", "MoveToTeachPoint", OnMoveToTeachPoint);
+                        CreateMethod(_commandsFolder, "ExecuteSequence", "ExecuteSequence", OnExecuteSequence);
+                        CreateMethod(_commandsFolder, "UpdateVariable", "UpdateVariable", OnUpdateVariable);
+
+                        // Create teach points folder and nodes
+                        Console.WriteLine("Creating teach points folder...");
+                        _teachPointsFolder = CreateFolder(_robotFolder, "TeachPoints", "TeachPoints");
+                        CreateTeachPointsNodes();
+
+                        // Create sequences folder and nodes
+                        Console.WriteLine("Creating sequences folder...");
+                        _sequencesFolder = CreateFolder(_robotFolder, "Sequences", "Sequences");
+                        CreateSequencesNodes();
 
                         Console.WriteLine("Address space creation completed successfully");
                     }
