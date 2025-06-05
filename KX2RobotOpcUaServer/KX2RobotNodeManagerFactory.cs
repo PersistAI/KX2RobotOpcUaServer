@@ -38,10 +38,30 @@ namespace KX2RobotOpcUa
         /// </summary>
         public INodeManager Create(IServerInternal server, ApplicationConfiguration configuration)
         {
-            // Create a new KX2RobotNodeManager
-            var kx2Robot = new KX2RobotControlNamespace.KX2RobotControl();
-            _kx2Robot = kx2Robot;
-            return new KX2RobotNodeManager(server, configuration, kx2Robot);
+            try
+            {
+                Console.WriteLine("Creating KX2RobotNodeManager...");
+
+                // Create a new KX2RobotControl if it doesn't exist
+                if (_kx2Robot == null)
+                {
+                    Console.WriteLine("Creating new KX2RobotControl instance...");
+                    _kx2Robot = new KX2RobotControlNamespace.KX2RobotControl();
+                }
+
+                // Create the node manager with the server and configuration
+                Console.WriteLine("Creating KX2RobotNodeManager with server and configuration...");
+                return new KX2RobotNodeManager(server, configuration, _kx2Robot);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error creating node manager: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+                throw;
+            }
         }
 
         /// <summary>

@@ -52,7 +52,7 @@ namespace KX2RobotOpcUa
         #region Private Fields
         private KX2RobotControl _kx2Robot;
         private ushort _namespaceIndex;
-        private long _lastUsedId;
+        private uint _lastUsedId;  // Changed from long to uint for NodeId compatibility
         private Timer _updateTimer;
         private FolderState _robotFolder;
         private FolderState _statusFolder;
@@ -79,11 +79,28 @@ namespace KX2RobotOpcUa
             KX2RobotControl kx2Robot)
         : base(server, configuration, new string[] { "http://persist.com/KX2Robot" })
         {
-            _kx2Robot = kx2Robot;
-            _lastUsedId = 0;
+            try
+            {
+                Console.WriteLine("KX2RobotNodeManager constructor called with IServerInternal");
 
-            // Start a timer to update the robot status
-            _updateTimer = new Timer(UpdateRobotStatus, null, 1000, 1000);
+                // Store the robot control
+                _kx2Robot = kx2Robot;
+                _lastUsedId = 0;
+
+                // Start a timer to update the robot status
+                _updateTimer = new Timer(UpdateRobotStatus, null, 1000, 1000);
+
+                Console.WriteLine("KX2RobotNodeManager constructor completed successfully");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in KX2RobotNodeManager constructor: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+                throw;
+            }
         }
 
         /// <summary>
@@ -314,61 +331,56 @@ namespace KX2RobotOpcUa
         /// </summary>
         public override void CreateAddressSpace(IDictionary<NodeId, IList<IReference>> externalReferences)
         {
-            lock (Lock)
+            try
             {
-                // Get the namespace index for our namespace
-                _namespaceIndex = Server.NamespaceUris.GetIndexOrAppend(NamespaceUris.First());
+                Console.WriteLine("KX2RobotNodeManager.CreateAddressSpace - Starting address space creation");
 
-                // Create the root folder
-                _robotFolder = CreateFolder(null, "KX2Robot", "KX2Robot");
-                AddExternalReferenceToRoot(_robotFolder, externalReferences);
-
-                // Create the status folder
-                _statusFolder = CreateFolder(_robotFolder, "Status", "Status");
-
-                // Create the commands folder
-                _commandsFolder = CreateFolder(_robotFolder, "Commands", "Commands");
-
-                // Create the teach points folder
-                _teachPointsFolder = CreateFolder(_robotFolder, "TeachPoints", "TeachPoints");
-
-                // Create the sequences folder
-                _sequencesFolder = CreateFolder(_robotFolder, "Sequences", "Sequences");
-
-                // Create the positions folder
-                _positionsFolder = CreateFolder(_robotFolder, "Positions", "Positions");
-
-                // Create status variables
-                _isInitializedVariable = CreateVariable(_statusFolder, "IsInitialized", "IsInitialized", DataTypeIds.Boolean, ValueRanks.Scalar);
-                _isMovingVariable = CreateVariable(_statusFolder, "IsMoving", "IsMoving", DataTypeIds.Boolean, ValueRanks.Scalar);
-                _isRobotOnRailVariable = CreateVariable(_statusFolder, "IsRobotOnRail", "IsRobotOnRail", DataTypeIds.Boolean, ValueRanks.Scalar);
-                _isScriptRunningVariable = CreateVariable(_statusFolder, "IsScriptRunning", "IsScriptRunning", DataTypeIds.Boolean, ValueRanks.Scalar);
-                _errorCodeVariable = CreateVariable(_statusFolder, "ErrorCode", "ErrorCode", DataTypeIds.Int32, ValueRanks.Scalar);
-                _errorMessageVariable = CreateVariable(_statusFolder, "ErrorMessage", "ErrorMessage", DataTypeIds.String, ValueRanks.Scalar);
-
-                // Create position variables
-                _axisPositionVariables = new BaseDataVariableState[4];
-                for (int i = 0; i < 4; i++)
+                lock (Lock)
                 {
-                    _axisPositionVariables[i] = CreateVariable(_positionsFolder, $"Axis{i + 1}", $"Axis{i + 1}", DataTypeIds.Double, ValueRanks.Scalar);
+                    try
+                    {
+                        // Get the namespace index for our namespace
+                        Console.WriteLine("Getting namespace index...");
+                        _namespaceIndex = Server.NamespaceUris.GetIndexOrAppend(NamespaceUris.First());
+                        Console.WriteLine($"Namespace index: {_namespaceIndex}");
+
+                        // Create a simplified address space for testing
+                        Console.WriteLine("Creating root folder...");
+                        _robotFolder = CreateFolder(null, "KX2Robot", "KX2Robot");
+                        AddExternalReferenceToRoot(_robotFolder, externalReferences);
+
+                        // Create a single status folder with minimal variables
+                        Console.WriteLine("Creating status folder...");
+                        _statusFolder = CreateFolder(_robotFolder, "Status", "Status");
+
+                        // Create just one variable for testing
+                        Console.WriteLine("Creating test variable...");
+                        _isInitializedVariable = CreateVariable(_statusFolder, "IsInitialized", "IsInitialized", DataTypeIds.Boolean, ValueRanks.Scalar);
+                        _isInitializedVariable.Value = false;
+
+                        Console.WriteLine("Address space creation completed successfully");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error in CreateAddressSpace (inner): {ex.Message}");
+                        Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                        if (ex.InnerException != null)
+                        {
+                            Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                        }
+                        throw;
+                    }
                 }
-
-                // Create methods
-                CreateMethod(_commandsFolder, "Initialize", "Initialize", OnInitialize);
-                CreateMethod(_commandsFolder, "Shutdown", "Shutdown", OnShutdown);
-                CreateMethod(_commandsFolder, "MoveAbsolute", "MoveAbsolute", OnMoveAbsolute);
-                CreateMethod(_commandsFolder, "MoveRelative", "MoveRelative", OnMoveRelative);
-                CreateMethod(_commandsFolder, "LoadTeachPoints", "LoadTeachPoints", OnLoadTeachPoints);
-                CreateMethod(_commandsFolder, "MoveToTeachPoint", "MoveToTeachPoint", OnMoveToTeachPoint);
-                CreateMethod(_commandsFolder, "ExecuteSequence", "ExecuteSequence", OnExecuteSequence);
-                CreateMethod(_commandsFolder, "UpdateVariable", "UpdateVariable", OnUpdateVariable);
-
-                // Create teach points and sequences
-                CreateTeachPointsNodes();
-                CreateSequencesNodes();
-
-                // Update the robot status
-                UpdateRobotStatus(null);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in CreateAddressSpace (outer): {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+                throw;
             }
         }
 
@@ -397,24 +409,44 @@ namespace KX2RobotOpcUa
         /// </summary>
         private FolderState CreateFolder(NodeState parent, string name, string displayName)
         {
-            FolderState folder = new FolderState(parent);
-
-            folder.SymbolicName = name;
-            folder.ReferenceTypeId = ReferenceTypes.Organizes;
-            folder.TypeDefinitionId = ObjectTypeIds.FolderType;
-            folder.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-            folder.BrowseName = new QualifiedName(name, _namespaceIndex);
-            folder.DisplayName = new LocalizedText("en", displayName);
-            folder.WriteMask = AttributeWriteMask.None;
-            folder.UserWriteMask = AttributeWriteMask.None;
-            folder.EventNotifier = EventNotifiers.None;
-
-            if (parent != null)
+            try
             {
-                parent.AddChild(folder);
-            }
+                Console.WriteLine($"Creating folder: {name}");
 
-            return folder;
+                FolderState folder = new FolderState(parent);
+
+                folder.SymbolicName = name;
+                folder.ReferenceTypeId = ReferenceTypes.Organizes;
+                folder.TypeDefinitionId = ObjectTypeIds.FolderType;
+
+                // Increment the ID and create a NodeId with uint (not long)
+                _lastUsedId++;
+                Console.WriteLine($"Creating NodeId with numeric ID: {_lastUsedId}, namespace index: {_namespaceIndex}");
+                folder.NodeId = new NodeId((uint)_lastUsedId, _namespaceIndex);
+
+                folder.BrowseName = new QualifiedName(name, _namespaceIndex);
+                folder.DisplayName = new LocalizedText("en", displayName);
+                folder.WriteMask = AttributeWriteMask.None;
+                folder.UserWriteMask = AttributeWriteMask.None;
+                folder.EventNotifier = EventNotifiers.None;
+
+                if (parent != null)
+                {
+                    parent.AddChild(folder);
+                }
+
+                Console.WriteLine($"Folder {name} created successfully with NodeId: {folder.NodeId}");
+                return folder;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error creating folder {name}: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+                throw;
+            }
         }
 
         /// <summary>
@@ -422,31 +454,51 @@ namespace KX2RobotOpcUa
         /// </summary>
         private BaseDataVariableState CreateVariable(NodeState parent, string name, string displayName, NodeId dataType, int valueRank)
         {
-            BaseDataVariableState variable = new BaseDataVariableState(parent);
-
-            variable.SymbolicName = name;
-            variable.ReferenceTypeId = ReferenceTypes.Organizes;
-            variable.TypeDefinitionId = VariableTypeIds.BaseDataVariableType;
-            variable.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-            variable.BrowseName = new QualifiedName(name, _namespaceIndex);
-            variable.DisplayName = new LocalizedText("en", displayName);
-            variable.WriteMask = AttributeWriteMask.None;
-            variable.UserWriteMask = AttributeWriteMask.None;
-            variable.DataType = dataType;
-            variable.ValueRank = valueRank;
-            variable.AccessLevel = AccessLevels.CurrentRead;
-            variable.UserAccessLevel = AccessLevels.CurrentRead;
-            variable.Historizing = false;
-            variable.Value = GetDefaultValue(dataType, valueRank);
-            variable.StatusCode = StatusCodes.Good;
-            variable.Timestamp = DateTime.UtcNow;
-
-            if (parent != null)
+            try
             {
-                parent.AddChild(variable);
-            }
+                Console.WriteLine($"Creating variable: {name}");
 
-            return variable;
+                BaseDataVariableState variable = new BaseDataVariableState(parent);
+
+                variable.SymbolicName = name;
+                variable.ReferenceTypeId = ReferenceTypes.Organizes;
+                variable.TypeDefinitionId = VariableTypeIds.BaseDataVariableType;
+
+                // Increment the ID and create a NodeId with uint (not long)
+                _lastUsedId++;
+                Console.WriteLine($"Creating NodeId with numeric ID: {_lastUsedId}, namespace index: {_namespaceIndex}");
+                variable.NodeId = new NodeId((uint)_lastUsedId, _namespaceIndex);
+
+                variable.BrowseName = new QualifiedName(name, _namespaceIndex);
+                variable.DisplayName = new LocalizedText("en", displayName);
+                variable.WriteMask = AttributeWriteMask.None;
+                variable.UserWriteMask = AttributeWriteMask.None;
+                variable.DataType = dataType;
+                variable.ValueRank = valueRank;
+                variable.AccessLevel = AccessLevels.CurrentRead;
+                variable.UserAccessLevel = AccessLevels.CurrentRead;
+                variable.Historizing = false;
+                variable.Value = GetDefaultValue(dataType, valueRank);
+                variable.StatusCode = StatusCodes.Good;
+                variable.Timestamp = DateTime.UtcNow;
+
+                if (parent != null)
+                {
+                    parent.AddChild(variable);
+                }
+
+                Console.WriteLine($"Variable {name} created successfully with NodeId: {variable.NodeId}");
+                return variable;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error creating variable {name}: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+                throw;
+            }
         }
 
         /// <summary>
@@ -454,240 +506,264 @@ namespace KX2RobotOpcUa
         /// </summary>
         private MethodState CreateMethod(NodeState parent, string name, string displayName, GenericMethodCalledEventHandler onCalled)
         {
-            MethodState method = new MethodState(parent);
-
-            method.SymbolicName = name;
-            method.ReferenceTypeId = ReferenceTypes.HasComponent;
-            method.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-            method.BrowseName = new QualifiedName(name, _namespaceIndex);
-            method.DisplayName = new LocalizedText("en", displayName);
-            method.WriteMask = AttributeWriteMask.None;
-            method.UserWriteMask = AttributeWriteMask.None;
-            method.Executable = true;
-            method.UserExecutable = true;
-
-            if (parent != null)
+            try
             {
-                parent.AddChild(method);
-            }
+                Console.WriteLine($"Creating method: {name}");
 
-            // Set up method arguments based on the method name
-            switch (name)
-            {
-                case "Initialize":
-                    method.OnCallMethod = onCalled;
-                    break;
+                MethodState method = new MethodState(parent);
 
-                case "Shutdown":
-                    method.OnCallMethod = onCalled;
-                    break;
+                method.SymbolicName = name;
+                method.ReferenceTypeId = ReferenceTypes.HasComponent;
 
-                case "MoveAbsolute":
-                    method.InputArguments = new PropertyState<Argument[]>(method);
-                    method.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    method.InputArguments.BrowseName = BrowseNames.InputArguments;
-                    method.InputArguments.DisplayName = method.InputArguments.BrowseName.Name;
-                    method.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    method.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    method.InputArguments.DataType = DataTypeIds.Argument;
-                    method.InputArguments.ValueRank = ValueRanks.OneDimension;
+                // Increment the ID and create a NodeId with uint (not long)
+                _lastUsedId++;
+                Console.WriteLine($"Creating NodeId with numeric ID: {_lastUsedId}, namespace index: {_namespaceIndex}");
+                method.NodeId = new NodeId((uint)_lastUsedId, _namespaceIndex);
 
-                    method.InputArguments.Value = new Argument[]
-                    {
+                method.BrowseName = new QualifiedName(name, _namespaceIndex);
+                method.DisplayName = new LocalizedText("en", displayName);
+                method.WriteMask = AttributeWriteMask.None;
+                method.UserWriteMask = AttributeWriteMask.None;
+                method.Executable = true;
+                method.UserExecutable = true;
+
+                if (parent != null)
+                {
+                    parent.AddChild(method);
+                }
+
+                Console.WriteLine($"Method {name} created successfully with NodeId: {method.NodeId}");
+
+                // Set up method arguments based on the method name
+                switch (name)
+                {
+                    case "Initialize":
+                        method.OnCallMethod = onCalled;
+                        break;
+
+                    case "Shutdown":
+                        method.OnCallMethod = onCalled;
+                        break;
+
+                    case "MoveAbsolute":
+                        method.InputArguments = new PropertyState<Argument[]>(method);
+                        _lastUsedId++;
+                        method.InputArguments.NodeId = new NodeId((uint)_lastUsedId, _namespaceIndex);
+                        method.InputArguments.BrowseName = BrowseNames.InputArguments;
+                        method.InputArguments.DisplayName = method.InputArguments.BrowseName.Name;
+                        method.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                        method.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                        method.InputArguments.DataType = DataTypeIds.Argument;
+                        method.InputArguments.ValueRank = ValueRanks.OneDimension;
+
+                        method.InputArguments.Value = new Argument[]
+                        {
                         new Argument { Name = "Axis1", Description = "Position for Axis 1", DataType = DataTypeIds.Double, ValueRank = ValueRanks.Scalar },
                         new Argument { Name = "Axis2", Description = "Position for Axis 2", DataType = DataTypeIds.Double, ValueRank = ValueRanks.Scalar },
                         new Argument { Name = "Axis3", Description = "Position for Axis 3", DataType = DataTypeIds.Double, ValueRank = ValueRanks.Scalar },
                         new Argument { Name = "Axis4", Description = "Position for Axis 4", DataType = DataTypeIds.Double, ValueRank = ValueRanks.Scalar },
                         new Argument { Name = "Velocity", Description = "Velocity percentage", DataType = DataTypeIds.Double, ValueRank = ValueRanks.Scalar },
                         new Argument { Name = "Acceleration", Description = "Acceleration percentage", DataType = DataTypeIds.Double, ValueRank = ValueRanks.Scalar }
-                    };
+                        };
 
-                    method.OutputArguments = new PropertyState<Argument[]>(method);
-                    method.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    method.OutputArguments.BrowseName = BrowseNames.OutputArguments;
-                    method.OutputArguments.DisplayName = method.OutputArguments.BrowseName.Name;
-                    method.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    method.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    method.OutputArguments.DataType = DataTypeIds.Argument;
-                    method.OutputArguments.ValueRank = ValueRanks.OneDimension;
+                        method.OutputArguments = new PropertyState<Argument[]>(method);
+                        _lastUsedId++;
+                        method.OutputArguments.NodeId = new NodeId((uint)_lastUsedId, _namespaceIndex);
+                        method.OutputArguments.BrowseName = BrowseNames.OutputArguments;
+                        method.OutputArguments.DisplayName = method.OutputArguments.BrowseName.Name;
+                        method.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                        method.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                        method.OutputArguments.DataType = DataTypeIds.Argument;
+                        method.OutputArguments.ValueRank = ValueRanks.OneDimension;
 
-                    method.OutputArguments.Value = new Argument[]
-                    {
+                        method.OutputArguments.Value = new Argument[]
+                        {
                         new Argument { Name = "Result", Description = "Result code (0 = success)", DataType = DataTypeIds.Int32, ValueRank = ValueRanks.Scalar }
-                    };
+                        };
 
-                    method.OnCallMethod = onCalled;
-                    break;
+                        method.OnCallMethod = onCalled;
+                        break;
 
-                case "MoveRelative":
-                    method.InputArguments = new PropertyState<Argument[]>(method);
-                    method.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    method.InputArguments.BrowseName = BrowseNames.InputArguments;
-                    method.InputArguments.DisplayName = method.InputArguments.BrowseName.Name;
-                    method.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    method.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    method.InputArguments.DataType = DataTypeIds.Argument;
-                    method.InputArguments.ValueRank = ValueRanks.OneDimension;
+                    case "MoveRelative":
+                        method.InputArguments = new PropertyState<Argument[]>(method);
+                        method.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                        method.InputArguments.BrowseName = BrowseNames.InputArguments;
+                        method.InputArguments.DisplayName = method.InputArguments.BrowseName.Name;
+                        method.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                        method.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                        method.InputArguments.DataType = DataTypeIds.Argument;
+                        method.InputArguments.ValueRank = ValueRanks.OneDimension;
 
-                    method.InputArguments.Value = new Argument[]
-                    {
+                        method.InputArguments.Value = new Argument[]
+                        {
                         new Argument { Name = "AxisNumber", Description = "Axis number (1-4)", DataType = DataTypeIds.Int16, ValueRank = ValueRanks.Scalar },
                         new Argument { Name = "Distance", Description = "Distance to move", DataType = DataTypeIds.Double, ValueRank = ValueRanks.Scalar },
                         new Argument { Name = "Velocity", Description = "Velocity percentage", DataType = DataTypeIds.Double, ValueRank = ValueRanks.Scalar },
                         new Argument { Name = "Acceleration", Description = "Acceleration percentage", DataType = DataTypeIds.Double, ValueRank = ValueRanks.Scalar }
-                    };
+                        };
 
-                    method.OutputArguments = new PropertyState<Argument[]>(method);
-                    method.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    method.OutputArguments.BrowseName = BrowseNames.OutputArguments;
-                    method.OutputArguments.DisplayName = method.OutputArguments.BrowseName.Name;
-                    method.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    method.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    method.OutputArguments.DataType = DataTypeIds.Argument;
-                    method.OutputArguments.ValueRank = ValueRanks.OneDimension;
+                        method.OutputArguments = new PropertyState<Argument[]>(method);
+                        method.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                        method.OutputArguments.BrowseName = BrowseNames.OutputArguments;
+                        method.OutputArguments.DisplayName = method.OutputArguments.BrowseName.Name;
+                        method.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                        method.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                        method.OutputArguments.DataType = DataTypeIds.Argument;
+                        method.OutputArguments.ValueRank = ValueRanks.OneDimension;
 
-                    method.OutputArguments.Value = new Argument[]
-                    {
+                        method.OutputArguments.Value = new Argument[]
+                        {
                         new Argument { Name = "Result", Description = "Result code (0 = success)", DataType = DataTypeIds.Int32, ValueRank = ValueRanks.Scalar }
-                    };
+                        };
 
-                    method.OnCallMethod = onCalled;
-                    break;
+                        method.OnCallMethod = onCalled;
+                        break;
 
-                case "LoadTeachPoints":
-                    method.InputArguments = new PropertyState<Argument[]>(method);
-                    method.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    method.InputArguments.BrowseName = BrowseNames.InputArguments;
-                    method.InputArguments.DisplayName = method.InputArguments.BrowseName.Name;
-                    method.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    method.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    method.InputArguments.DataType = DataTypeIds.Argument;
-                    method.InputArguments.ValueRank = ValueRanks.OneDimension;
+                    case "LoadTeachPoints":
+                        method.InputArguments = new PropertyState<Argument[]>(method);
+                        method.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                        method.InputArguments.BrowseName = BrowseNames.InputArguments;
+                        method.InputArguments.DisplayName = method.InputArguments.BrowseName.Name;
+                        method.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                        method.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                        method.InputArguments.DataType = DataTypeIds.Argument;
+                        method.InputArguments.ValueRank = ValueRanks.OneDimension;
 
-                    method.InputArguments.Value = new Argument[]
-                    {
+                        method.InputArguments.Value = new Argument[]
+                        {
                         new Argument { Name = "FilePath", Description = "Path to teach points file", DataType = DataTypeIds.String, ValueRank = ValueRanks.Scalar }
-                    };
+                        };
 
-                    method.OutputArguments = new PropertyState<Argument[]>(method);
-                    method.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    method.OutputArguments.BrowseName = BrowseNames.OutputArguments;
-                    method.OutputArguments.DisplayName = method.OutputArguments.BrowseName.Name;
-                    method.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    method.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    method.OutputArguments.DataType = DataTypeIds.Argument;
-                    method.OutputArguments.ValueRank = ValueRanks.OneDimension;
+                        method.OutputArguments = new PropertyState<Argument[]>(method);
+                        method.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                        method.OutputArguments.BrowseName = BrowseNames.OutputArguments;
+                        method.OutputArguments.DisplayName = method.OutputArguments.BrowseName.Name;
+                        method.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                        method.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                        method.OutputArguments.DataType = DataTypeIds.Argument;
+                        method.OutputArguments.ValueRank = ValueRanks.OneDimension;
 
-                    method.OutputArguments.Value = new Argument[]
-                    {
+                        method.OutputArguments.Value = new Argument[]
+                        {
                         new Argument { Name = "Result", Description = "Result code (0 = success)", DataType = DataTypeIds.Int16, ValueRank = ValueRanks.Scalar }
-                    };
+                        };
 
-                    method.OnCallMethod = onCalled;
-                    break;
+                        method.OnCallMethod = onCalled;
+                        break;
 
-                case "MoveToTeachPoint":
-                    method.InputArguments = new PropertyState<Argument[]>(method);
-                    method.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    method.InputArguments.BrowseName = BrowseNames.InputArguments;
-                    method.InputArguments.DisplayName = method.InputArguments.BrowseName.Name;
-                    method.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    method.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    method.InputArguments.DataType = DataTypeIds.Argument;
-                    method.InputArguments.ValueRank = ValueRanks.OneDimension;
+                    case "MoveToTeachPoint":
+                        method.InputArguments = new PropertyState<Argument[]>(method);
+                        method.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                        method.InputArguments.BrowseName = BrowseNames.InputArguments;
+                        method.InputArguments.DisplayName = method.InputArguments.BrowseName.Name;
+                        method.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                        method.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                        method.InputArguments.DataType = DataTypeIds.Argument;
+                        method.InputArguments.ValueRank = ValueRanks.OneDimension;
 
-                    method.InputArguments.Value = new Argument[]
-                    {
+                        method.InputArguments.Value = new Argument[]
+                        {
                         new Argument { Name = "TeachPointName", Description = "Name of the teach point", DataType = DataTypeIds.String, ValueRank = ValueRanks.Scalar },
                         new Argument { Name = "Velocity", Description = "Velocity percentage", DataType = DataTypeIds.Double, ValueRank = ValueRanks.Scalar },
                         new Argument { Name = "Acceleration", Description = "Acceleration percentage", DataType = DataTypeIds.Double, ValueRank = ValueRanks.Scalar }
-                    };
+                        };
 
-                    method.OutputArguments = new PropertyState<Argument[]>(method);
-                    method.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    method.OutputArguments.BrowseName = BrowseNames.OutputArguments;
-                    method.OutputArguments.DisplayName = method.OutputArguments.BrowseName.Name;
-                    method.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    method.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    method.OutputArguments.DataType = DataTypeIds.Argument;
-                    method.OutputArguments.ValueRank = ValueRanks.OneDimension;
+                        method.OutputArguments = new PropertyState<Argument[]>(method);
+                        method.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                        method.OutputArguments.BrowseName = BrowseNames.OutputArguments;
+                        method.OutputArguments.DisplayName = method.OutputArguments.BrowseName.Name;
+                        method.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                        method.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                        method.OutputArguments.DataType = DataTypeIds.Argument;
+                        method.OutputArguments.ValueRank = ValueRanks.OneDimension;
 
-                    method.OutputArguments.Value = new Argument[]
-                    {
+                        method.OutputArguments.Value = new Argument[]
+                        {
                         new Argument { Name = "Result", Description = "Result code (0 = success)", DataType = DataTypeIds.Int32, ValueRank = ValueRanks.Scalar }
-                    };
+                        };
 
-                    method.OnCallMethod = onCalled;
-                    break;
+                        method.OnCallMethod = onCalled;
+                        break;
 
-                case "ExecuteSequence":
-                    method.InputArguments = new PropertyState<Argument[]>(method);
-                    method.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    method.InputArguments.BrowseName = BrowseNames.InputArguments;
-                    method.InputArguments.DisplayName = method.InputArguments.BrowseName.Name;
-                    method.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    method.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    method.InputArguments.DataType = DataTypeIds.Argument;
-                    method.InputArguments.ValueRank = ValueRanks.OneDimension;
+                    case "ExecuteSequence":
+                        method.InputArguments = new PropertyState<Argument[]>(method);
+                        method.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                        method.InputArguments.BrowseName = BrowseNames.InputArguments;
+                        method.InputArguments.DisplayName = method.InputArguments.BrowseName.Name;
+                        method.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                        method.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                        method.InputArguments.DataType = DataTypeIds.Argument;
+                        method.InputArguments.ValueRank = ValueRanks.OneDimension;
 
-                    method.InputArguments.Value = new Argument[]
-                    {
+                        method.InputArguments.Value = new Argument[]
+                        {
                         new Argument { Name = "SequenceName", Description = "Name of the sequence", DataType = DataTypeIds.String, ValueRank = ValueRanks.Scalar }
-                    };
+                        };
 
-                    method.OutputArguments = new PropertyState<Argument[]>(method);
-                    method.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    method.OutputArguments.BrowseName = BrowseNames.OutputArguments;
-                    method.OutputArguments.DisplayName = method.OutputArguments.BrowseName.Name;
-                    method.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    method.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    method.OutputArguments.DataType = DataTypeIds.Argument;
-                    method.OutputArguments.ValueRank = ValueRanks.OneDimension;
+                        method.OutputArguments = new PropertyState<Argument[]>(method);
+                        method.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                        method.OutputArguments.BrowseName = BrowseNames.OutputArguments;
+                        method.OutputArguments.DisplayName = method.OutputArguments.BrowseName.Name;
+                        method.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                        method.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                        method.OutputArguments.DataType = DataTypeIds.Argument;
+                        method.OutputArguments.ValueRank = ValueRanks.OneDimension;
 
-                    method.OutputArguments.Value = new Argument[]
-                    {
+                        method.OutputArguments.Value = new Argument[]
+                        {
                         new Argument { Name = "Result", Description = "Result code (0 = success)", DataType = DataTypeIds.Int32, ValueRank = ValueRanks.Scalar }
-                    };
+                        };
 
-                    method.OnCallMethod = onCalled;
-                    break;
+                        method.OnCallMethod = onCalled;
+                        break;
 
-                case "UpdateVariable":
-                    method.InputArguments = new PropertyState<Argument[]>(method);
-                    method.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    method.InputArguments.BrowseName = BrowseNames.InputArguments;
-                    method.InputArguments.DisplayName = method.InputArguments.BrowseName.Name;
-                    method.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    method.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    method.InputArguments.DataType = DataTypeIds.Argument;
-                    method.InputArguments.ValueRank = ValueRanks.OneDimension;
+                    case "UpdateVariable":
+                        method.InputArguments = new PropertyState<Argument[]>(method);
+                        method.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                        method.InputArguments.BrowseName = BrowseNames.InputArguments;
+                        method.InputArguments.DisplayName = method.InputArguments.BrowseName.Name;
+                        method.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                        method.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                        method.InputArguments.DataType = DataTypeIds.Argument;
+                        method.InputArguments.ValueRank = ValueRanks.OneDimension;
 
-                    method.InputArguments.Value = new Argument[]
-                    {
+                        method.InputArguments.Value = new Argument[]
+                        {
                         new Argument { Name = "VariableName", Description = "Name of the variable", DataType = DataTypeIds.String, ValueRank = ValueRanks.Scalar },
                         new Argument { Name = "Value", Description = "Value to set", DataType = DataTypeIds.String, ValueRank = ValueRanks.Scalar }
-                    };
+                        };
 
-                    method.OutputArguments = new PropertyState<Argument[]>(method);
-                    method.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    method.OutputArguments.BrowseName = BrowseNames.OutputArguments;
-                    method.OutputArguments.DisplayName = method.OutputArguments.BrowseName.Name;
-                    method.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    method.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    method.OutputArguments.DataType = DataTypeIds.Argument;
-                    method.OutputArguments.ValueRank = ValueRanks.OneDimension;
+                        method.OutputArguments = new PropertyState<Argument[]>(method);
+                        method.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                        method.OutputArguments.BrowseName = BrowseNames.OutputArguments;
+                        method.OutputArguments.DisplayName = method.OutputArguments.BrowseName.Name;
+                        method.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                        method.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                        method.OutputArguments.DataType = DataTypeIds.Argument;
+                        method.OutputArguments.ValueRank = ValueRanks.OneDimension;
 
-                    method.OutputArguments.Value = new Argument[]
-                    {
+                        method.OutputArguments.Value = new Argument[]
+                        {
                         new Argument { Name = "Result", Description = "Result code (0 = success)", DataType = DataTypeIds.Int32, ValueRank = ValueRanks.Scalar }
-                    };
+                        };
 
-                    method.OnCallMethod = onCalled;
-                    break;
+                        method.OnCallMethod = onCalled;
+                        break;
+                }
+
+                return method;
             }
-
-            return method;
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error creating method {name}: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+                throw;
+            }
         }
+
 
         /// <summary>
         /// Gets the default value for a data type.
@@ -922,61 +998,30 @@ namespace KX2RobotOpcUa
         {
             try
             {
-                lock (Lock)
+                // In our simplified address space, we only have one variable to update
+                if (_isInitializedVariable != null)
                 {
-                    // Update the status variables using methods
-                    _isInitializedVariable.Value = _kx2Robot.IsInitialized();
-
-                    // Check if any motor is moving
-                    bool isMoving = false;
-                    for (short i = 1; i <= 4; i++)
+                    try
                     {
-                        bool isDone = true;
-                        _kx2Robot.MotorCheckIfMoveDone(i, ref isDone);
-                        if (!isDone)
-                        {
-                            isMoving = true;
-                            break;
-                        }
+                        _isInitializedVariable.Value = _kx2Robot.IsInitialized();
                     }
-                    _isMovingVariable.Value = isMoving;
-
-                    // Check if robot is on rail
-                    _isRobotOnRailVariable.Value = _kx2Robot.IsRobotOnRail();
-
-                    // Check if script is running
-                    _isScriptRunningVariable.Value = _kx2Robot.IsScriptRunning();
-
-                    // Get the error code - we'll use 0 for no error
-                    int errorCode = 0;
-                    string errorMessage = "No error";
-
-                    if (!isMoving)
+                    catch (Exception ex)
                     {
-                        // 0 means no error
-                        // If we have an error code, get the corresponding message
-                        if (errorCode != 0)
-                        {
-                            // GetErrorCode takes an error number and returns the text description
-                            errorMessage = _kx2Robot.GetErrorCode((short)errorCode);
-                        }
-                    }
-
-                    _errorCodeVariable.Value = errorCode;
-                    _errorMessageVariable.Value = errorMessage;
-
-                    // Update the position variables
-                    for (short i = 0; i < 4; i++)
-                    {
-                        double position = 0;
-                        _kx2Robot.MotorGetCurrentPosition((short)(i + 1), ref position);
-                        _axisPositionVariables[i].Value = position;
+                        Console.WriteLine($"Error updating IsInitialized variable: {ex.Message}");
+                        // Set to false if there's an error
+                        _isInitializedVariable.Value = false;
                     }
                 }
+
+                // Skip updating other variables since they're not in our simplified address space
             }
             catch (Exception ex)
             {
-                Utils.Trace(ex, "Error updating robot status: {0}", ex.Message);
+                Console.WriteLine($"Error in UpdateRobotStatus: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
             }
         }
 

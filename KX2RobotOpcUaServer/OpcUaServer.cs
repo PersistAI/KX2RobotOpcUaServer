@@ -93,19 +93,50 @@ namespace LabEquipmentOpcUa
                 // Initialize and start the OPC UA server
                 Console.WriteLine("Starting OPC UA server...");
                 InitializeServer();
-                _server.Start(_config);
-                Console.WriteLine("OPC UA server started successfully.");
 
-                // Initialize all equipment (after server and node managers are initialized)
-                Console.WriteLine("Initializing equipment...");
-                foreach (var equipment in _equipmentManagers)
+                try
                 {
-                    equipment.Initialize();
+                    // Add more detailed logging for server start
+                    Console.WriteLine("Starting server with configuration...");
+                    _server.Start(_config);
+                    Console.WriteLine("OPC UA server started successfully.");
+
+                    // Re-enable equipment initialization since we've created the factory
+                    Console.WriteLine("Initializing equipment...");
+                    foreach (var equipment in _equipmentManagers)
+                    {
+                        equipment.Initialize();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Log detailed error information
+                    Console.WriteLine($"Error starting server: {ex.Message}");
+                    Console.WriteLine($"Error type: {ex.GetType().Name}");
+
+                    if (ex.InnerException != null)
+                    {
+                        Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                        Console.WriteLine($"Inner exception type: {ex.InnerException.GetType().Name}");
+
+                        if (ex.InnerException.InnerException != null)
+                        {
+                            Console.WriteLine($"Inner inner exception: {ex.InnerException.InnerException.Message}");
+                        }
+                    }
+
+                    Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                    throw;
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error starting server: {ex.Message}");
+                Console.WriteLine($"Error in server initialization: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
                 throw;
             }
         }
@@ -125,7 +156,7 @@ namespace LabEquipmentOpcUa
                     Console.WriteLine("OPC UA server stopped successfully.");
                 }
 
-                // Shutdown all equipment
+                // Re-enable equipment shutdown since we've re-enabled initialization
                 Console.WriteLine("Shutting down equipment...");
                 foreach (var equipment in _equipmentManagers)
                 {
@@ -173,16 +204,30 @@ namespace LabEquipmentOpcUa
             // Load the application configuration
             _config = CreateApplicationConfiguration();
 
-            // Check the application certificate
-            bool certOk = false;
+            // IMPORTANT: Load the configuration into the application instance
+            _application.ApplicationConfiguration = _config;
+
+            // Check/Create the application certificate - FORCE creation
             try
             {
-                // Try to check/create the certificate
-                certOk = _application.CheckApplicationInstanceCertificate(false, CertificateFactory.DefaultKeySize, CertificateFactory.DefaultLifeTime).Result;
+                Console.WriteLine("Checking application certificate...");
+
+                // Set AutoAcceptUntrustedCertificates to true to avoid certificate validation issues
+                _config.SecurityConfiguration.AutoAcceptUntrustedCertificates = true;
+
+                // Force creation of a new certificate if needed
+                bool certOk = _application.CheckApplicationInstanceCertificate(
+                    silent: false,           // Set to false to allow certificate creation
+                    minimumKeySize: CertificateFactory.DefaultKeySize,
+                    lifeTimeInMonths: CertificateFactory.DefaultLifeTime
+                ).Result;
+
                 if (!certOk)
                 {
-                    Console.WriteLine("Application instance certificate invalid!");
+                    throw new Exception("Failed to create or validate application certificate");
                 }
+
+                Console.WriteLine("Application certificate validated successfully.");
             }
             catch (Exception ex)
             {
@@ -193,13 +238,17 @@ namespace LabEquipmentOpcUa
                     Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
                 }
 
-                // Continue anyway - this will allow the server to run without a valid certificate
-                // This is acceptable for development but not for production
-                Console.WriteLine("Continuing without valid certificate (OK for development only)");
+                // Don't continue - certificate is required
+                throw new Exception("Failed to create or validate application certificate.", ex);
             }
 
             // Create the server
             _server = new StandardServer();
+
+            // Note: We don't need to explicitly set the application instance
+            // The server will use the application configuration when Start is called
+
+            Console.WriteLine("Step 2: Creating node manager factory and adding to server...");
 
             // Create node managers differently using factories
             var nodeManagerFactories = new List<INodeManagerFactory>();
@@ -215,9 +264,24 @@ namespace LabEquipmentOpcUa
             // _equipmentManagers.Add((IEquipmentNodeManager)tecanFactory);
 
             // Add the node manager factories to the server
+            Console.WriteLine("Adding node manager factories to server...");
             foreach (var factory in nodeManagerFactories)
             {
-                _server.AddNodeManager(factory);
+                try
+                {
+                    Console.WriteLine($"Adding factory: {factory.GetType().Name}");
+                    _server.AddNodeManager(factory);
+                    Console.WriteLine("Factory added successfully.");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error adding factory: {ex.Message}");
+                    if (ex.InnerException != null)
+                    {
+                        Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                    }
+                    throw;
+                }
             }
         }
 
@@ -226,41 +290,60 @@ namespace LabEquipmentOpcUa
         /// </summary>
         private ApplicationConfiguration CreateApplicationConfiguration()
         {
-            // Create the application configuration
+            Console.WriteLine("Creating simplified application configuration...");
+
+            // Create a simplified application configuration with minimal settings
             ApplicationConfiguration config = new ApplicationConfiguration
             {
                 ApplicationName = "Laboratory Equipment OPC UA Server",
                 ApplicationUri = "urn:localhost:LabEquipmentOpcUaServer",
                 ProductUri = "http://persist.com/LabEquipmentOpcUaServer",
                 ApplicationType = ApplicationType.Server,
+
+                // Simplified security configuration
                 SecurityConfiguration = new SecurityConfiguration
                 {
                     ApplicationCertificate = new CertificateIdentifier
                     {
-                        StoreType = CertificateStoreType.X509Store,
-                        StorePath = "CurrentUser\\My",
+                        StoreType = CertificateStoreType.Directory,
+                        StorePath = @"%CommonApplicationData%\OPC Foundation\CertificateStores\MachineDefault",
                         SubjectName = "CN=Laboratory Equipment OPC UA Server"
                     },
                     TrustedPeerCertificates = new CertificateTrustList
                     {
-                        StoreType = CertificateStoreType.X509Store,
-                        StorePath = "CurrentUser\\TrustedPeople"
+                        StoreType = CertificateStoreType.Directory,
+                        StorePath = @"%CommonApplicationData%\OPC Foundation\CertificateStores\UA Applications"
                     },
                     TrustedIssuerCertificates = new CertificateTrustList
                     {
-                        StoreType = CertificateStoreType.X509Store,
-                        StorePath = "CurrentUser\\TrustedPeople"
+                        StoreType = CertificateStoreType.Directory,
+                        StorePath = @"%CommonApplicationData%\OPC Foundation\CertificateStores\UA Certificate Authorities"
                     },
                     RejectedCertificateStore = new CertificateTrustList
                     {
-                        StoreType = CertificateStoreType.X509Store,
-                        StorePath = "CurrentUser\\RejectedCertificates"
+                        StoreType = CertificateStoreType.Directory,
+                        StorePath = @"%CommonApplicationData%\OPC Foundation\CertificateStores\RejectedCertificates"
                     },
                     AutoAcceptUntrustedCertificates = true,
-                    RejectSHA1SignedCertificates = false
+                    RejectSHA1SignedCertificates = false,
+                    MinimumCertificateKeySize = 1024  // Reduced key size for faster generation
                 },
+
+                // Simplified transport configuration
                 TransportConfigurations = new TransportConfigurationCollection(),
-                TransportQuotas = new TransportQuotas { OperationTimeout = 15000 },
+                TransportQuotas = new TransportQuotas
+                {
+                    OperationTimeout = 120000,  // Increased timeout
+                    MaxStringLength = 1048576,
+                    MaxByteStringLength = 1048576,
+                    MaxArrayLength = 65535,
+                    MaxMessageSize = 4194304,
+                    MaxBufferSize = 65535,
+                    ChannelLifetime = 300000,
+                    SecurityTokenLifetime = 3600000
+                },
+
+                // Simplified server configuration
                 ServerConfiguration = new ServerConfiguration
                 {
                     BaseAddresses = new StringCollection
@@ -270,13 +353,36 @@ namespace LabEquipmentOpcUa
                     MinRequestThreadCount = 5,
                     MaxRequestThreadCount = 100,
                     MaxQueuedRequestCount = 200,
+
+                    // Add security policies - None for testing
+                    SecurityPolicies = new ServerSecurityPolicyCollection
+                    {
+                        new ServerSecurityPolicy
+                        {
+                            SecurityMode = MessageSecurityMode.None,
+                            SecurityPolicyUri = SecurityPolicies.None
+                        }
+                    },
+
+                    UserTokenPolicies = new UserTokenPolicyCollection
+                    {
+                        new UserTokenPolicy
+                        {
+                            TokenType = UserTokenType.Anonymous,
+                            SecurityPolicyUri = SecurityPolicies.None
+                        }
+                    }
                 },
+
+                // Increased trace level for debugging
                 TraceConfiguration = new TraceConfiguration
                 {
-                    TraceMasks = 1
+                    TraceMasks = 515,  // Increased trace level
+                    OutputFilePath = "%CommonApplicationData%\\OPC Foundation\\Logs\\LabEquipmentOpcUaServer.log"
                 }
             };
 
+            Console.WriteLine("Application configuration created successfully.");
             return config;
         }
         #endregion
