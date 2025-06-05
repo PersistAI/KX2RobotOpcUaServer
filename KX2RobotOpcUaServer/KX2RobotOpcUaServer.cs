@@ -177,7 +177,25 @@ namespace KX2RobotOpcUa
                         // Create a simplified address space for testing
                         Console.WriteLine("Creating root folder...");
                         _robotFolder = CreateFolder(null, "KX2Robot", "KX2Robot");
-                        AddExternalReferenceToRoot(_robotFolder, externalReferences);
+
+                        // IMPORTANT: Add the root folder directly to the Objects folder
+                        Console.WriteLine("Adding root folder to Objects folder...");
+                        IList<IReference> references = null;
+                        if (!externalReferences.TryGetValue(ObjectIds.ObjectsFolder, out references))
+                        {
+                            Console.WriteLine("Creating new reference list for Objects folder");
+                            externalReferences[ObjectIds.ObjectsFolder] = references = new List<IReference>();
+                        }
+
+                        // Add forward reference (Objects folder organizes our node)
+                        Console.WriteLine("Adding forward reference (Objects folder organizes our node)");
+                        references.Add(new NodeStateReference(ReferenceTypes.Organizes, false, _robotFolder.NodeId));
+
+                        // Add backward reference (our node is organized by Objects folder)
+                        Console.WriteLine("Adding backward reference (our node is organized by Objects folder)");
+                        _robotFolder.AddReference(ReferenceTypes.Organizes, true, ObjectIds.ObjectsFolder);
+
+                        Console.WriteLine($"Root folder added to Objects folder with NodeId: {_robotFolder.NodeId}");
 
                         // Create a single status folder with minimal variables
                         Console.WriteLine("Creating status folder...");
@@ -213,6 +231,13 @@ namespace KX2RobotOpcUa
                         _sequencesFolder = CreateFolder(_robotFolder, "Sequences", "Sequences");
                         CreateSequencesNodes();
 
+                        // IMPORTANT: Register all nodes with the address space
+                        Console.WriteLine("Registering nodes with the address space...");
+
+                        // Add all nodes to the NodeManager
+                        AddPredefinedNode(SystemContext, _robotFolder);
+
+                        Console.WriteLine("Nodes registered successfully");
                         Console.WriteLine("Address space creation completed successfully");
                     }
                     catch (Exception ex)
@@ -750,15 +775,45 @@ namespace KX2RobotOpcUa
         {
             if (node != null)
             {
-                IList<IReference> references = null;
+                Console.WriteLine($"Adding external reference for node {node.NodeId} with BrowseName {node.BrowseName}");
 
-                if (!externalReferences.TryGetValue(ObjectIds.ObjectsFolder, out references))
+                try
                 {
-                    externalReferences[ObjectIds.ObjectsFolder] = references = new List<IReference>();
-                }
+                    // Add reference to Objects folder
+                    Console.WriteLine($"Adding reference to Objects folder (NodeId: {ObjectIds.ObjectsFolder})");
+                    IList<IReference> references = null;
+                    if (!externalReferences.TryGetValue(ObjectIds.ObjectsFolder, out references))
+                    {
+                        Console.WriteLine("Creating new reference list for Objects folder");
+                        externalReferences[ObjectIds.ObjectsFolder] = references = new List<IReference>();
+                    }
 
-                references.Add(new NodeStateReference(ReferenceTypes.Organizes, false, node.NodeId));
-                node.AddReference(ReferenceTypes.Organizes, true, ObjectIds.ObjectsFolder);
+                    // Add forward reference (Objects folder organizes our node)
+                    Console.WriteLine("Adding forward reference (Objects folder organizes our node)");
+                    references.Add(new NodeStateReference(ReferenceTypes.Organizes, false, node.NodeId));
+
+                    // Add backward reference (our node is organized by Objects folder)
+                    Console.WriteLine("Adding backward reference (our node is organized by Objects folder)");
+                    node.AddReference(ReferenceTypes.Organizes, true, ObjectIds.ObjectsFolder);
+
+                    // Make sure the node is visible in the address space
+                    Console.WriteLine("Ensuring node is visible in address space");
+
+                    Console.WriteLine($"External reference added successfully for {node.NodeId}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error adding external reference: {ex.Message}");
+                    if (ex.InnerException != null)
+                    {
+                        Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                    }
+                    throw;
+                }
+            }
+            else
+            {
+                Console.WriteLine("Cannot add external reference: node is null");
             }
         }
 
