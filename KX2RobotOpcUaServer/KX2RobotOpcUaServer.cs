@@ -476,7 +476,7 @@ namespace KX2RobotOpcUa
 
                         method.InputArguments.Value = new Argument[]
                         {
-                        new Argument { Name = "AxisNumber", Description = "Axis number (1-4)", DataType = DataTypeIds.Int16, ValueRank = ValueRanks.Scalar },
+                        new Argument { Name = "AxisNumber", Description = "Axis number (1-5)", DataType = DataTypeIds.Int16, ValueRank = ValueRanks.Scalar },
                         new Argument { Name = "Distance", Description = "Distance to move", DataType = DataTypeIds.Double, ValueRank = ValueRanks.Scalar },
                         new Argument { Name = "Velocity", Description = "Velocity percentage", DataType = DataTypeIds.Double, ValueRank = ValueRanks.Scalar },
                         new Argument { Name = "Acceleration", Description = "Acceleration percentage", DataType = DataTypeIds.Double, ValueRank = ValueRanks.Scalar }
