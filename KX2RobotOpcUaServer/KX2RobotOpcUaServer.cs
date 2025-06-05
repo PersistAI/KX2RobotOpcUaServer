@@ -103,25 +103,6 @@ namespace KX2RobotOpcUa
             }
         }
 
-        /// <summary>
-        /// Initializes a new instance of the KX2RobotNodeManager class for use with the OpcUaServer.
-        /// </summary>
-        public KX2RobotNodeManager(OpcUaServer server)
-            : base(null, server.Configuration, new string[] { "http://persist.com/KX2Robot" })
-        {
-            // Store references to server and configuration
-            _opcServer = server;
-
-            // Create a single instance of KX2RobotControl
-            _kx2Robot = new KX2RobotControl();
-            _lastUsedId = 0;
-
-            // Start a timer to update the robot status
-            _updateTimer = new Timer(UpdateRobotStatus, null, 1000, 1000);
-        }
-
-        // Reference to the OPC UA server
-        private OpcUaServer _opcServer;
         #endregion
 
         #region IEquipmentNodeManager Implementation
