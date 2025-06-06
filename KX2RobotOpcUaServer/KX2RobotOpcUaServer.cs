@@ -71,7 +71,11 @@ namespace KX2RobotOpcUa
         private BaseDataVariableState _isScriptRunningVariable;
         private BaseDataVariableState _errorCodeVariable;
         private BaseDataVariableState _errorMessageVariable;
-        private BaseDataVariableState[] _axisPositionVariables;
+        private BaseDataVariableState _axis1PositionVariable; // Shoulder
+        private BaseDataVariableState _axis2PositionVariable; // Z-Axis
+        private BaseDataVariableState _axis3PositionVariable; // Elbow
+        private BaseDataVariableState _axis4PositionVariable; // Wrist
+        private BaseDataVariableState _axis5PositionVariable; // Rail (if present)
         #endregion
 
         #region Constructor
@@ -201,10 +205,35 @@ namespace KX2RobotOpcUa
                         Console.WriteLine("Creating status folder...");
                         _statusFolder = CreateFolder(_robotFolder, "Status", "Status");
 
-                        // Create just one variable for testing
-                        Console.WriteLine("Creating test variable...");
+                        // Create status variables
+                        Console.WriteLine("Creating status variables...");
                         _isInitializedVariable = CreateVariable(_statusFolder, "IsInitialized", "IsInitialized", DataTypeIds.Boolean, ValueRanks.Scalar);
                         _isInitializedVariable.Value = false;
+
+                        _isRobotOnRailVariable = CreateVariable(_statusFolder, "IsRobotOnRail", "IsRobotOnRail", DataTypeIds.Boolean, ValueRanks.Scalar);
+                        _isRobotOnRailVariable.Value = false;
+
+                        // Create axis position variables
+                        Console.WriteLine("Creating axis position variables...");
+                        _axis1PositionVariable = CreateVariable(_statusFolder, "Axis1Position", "Shoulder Position", DataTypeIds.Double, ValueRanks.Scalar);
+                        _axis1PositionVariable.Value = 0.0;
+                        _axis1PositionVariable.Description = new LocalizedText("en", "Current position of Axis 1 (Shoulder) in degrees");
+
+                        _axis2PositionVariable = CreateVariable(_statusFolder, "Axis2Position", "Z-Axis Position", DataTypeIds.Double, ValueRanks.Scalar);
+                        _axis2PositionVariable.Value = 0.0;
+                        _axis2PositionVariable.Description = new LocalizedText("en", "Current position of Axis 2 (Z-Axis) in millimeters");
+
+                        _axis3PositionVariable = CreateVariable(_statusFolder, "Axis3Position", "Elbow Position", DataTypeIds.Double, ValueRanks.Scalar);
+                        _axis3PositionVariable.Value = 0.0;
+                        _axis3PositionVariable.Description = new LocalizedText("en", "Current position of Axis 3 (Elbow) in degrees");
+
+                        _axis4PositionVariable = CreateVariable(_statusFolder, "Axis4Position", "Wrist Position", DataTypeIds.Double, ValueRanks.Scalar);
+                        _axis4PositionVariable.Value = 0.0;
+                        _axis4PositionVariable.Description = new LocalizedText("en", "Current position of Axis 4 (Wrist) in degrees");
+
+                        _axis5PositionVariable = CreateVariable(_statusFolder, "Axis5Position", "Rail Position", DataTypeIds.Double, ValueRanks.Scalar);
+                        _axis5PositionVariable.Value = 0.0;
+                        _axis5PositionVariable.Description = new LocalizedText("en", "Current position of Axis 5 (Rail) in millimeters");
 
                         // Create commands folder for methods
                         Console.WriteLine("Creating commands folder...");
@@ -908,7 +937,7 @@ namespace KX2RobotOpcUa
         {
             try
             {
-                // In our simplified address space, we only have one variable to update
+                // Update IsInitialized variable
                 if (_isInitializedVariable != null)
                 {
                     try
@@ -923,7 +952,83 @@ namespace KX2RobotOpcUa
                     }
                 }
 
-                // Skip updating other variables since they're not in our simplified address space
+                // Update IsRobotOnRail variable
+                if (_isRobotOnRailVariable != null)
+                {
+                    try
+                    {
+                        _isRobotOnRailVariable.Value = _kx2Robot.IsRobotOnRail();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error updating IsRobotOnRail variable: {ex.Message}");
+                        // Set to false if there's an error
+                        _isRobotOnRailVariable.Value = false;
+                    }
+                }
+
+                // Update axis position variables
+                try
+                {
+                    // Update Axis 1 (Shoulder) position
+                    if (_axis1PositionVariable != null)
+                    {
+                        double position = 0.0;
+                        short result = _kx2Robot.MotorGetCurrentPosition(1, ref position);
+                        if (result == 0)
+                        {
+                            _axis1PositionVariable.Value = position;
+                        }
+                    }
+
+                    // Update Axis 2 (Z-Axis) position
+                    if (_axis2PositionVariable != null)
+                    {
+                        double position = 0.0;
+                        short result = _kx2Robot.MotorGetCurrentPosition(2, ref position);
+                        if (result == 0)
+                        {
+                            _axis2PositionVariable.Value = position;
+                        }
+                    }
+
+                    // Update Axis 3 (Elbow) position
+                    if (_axis3PositionVariable != null)
+                    {
+                        double position = 0.0;
+                        short result = _kx2Robot.MotorGetCurrentPosition(3, ref position);
+                        if (result == 0)
+                        {
+                            _axis3PositionVariable.Value = position;
+                        }
+                    }
+
+                    // Update Axis 4 (Wrist) position
+                    if (_axis4PositionVariable != null)
+                    {
+                        double position = 0.0;
+                        short result = _kx2Robot.MotorGetCurrentPosition(4, ref position);
+                        if (result == 0)
+                        {
+                            _axis4PositionVariable.Value = position;
+                        }
+                    }
+
+                    // Update Axis 5 (Rail) position if robot is on rail
+                    if (_axis5PositionVariable != null && _isRobotOnRailVariable != null && (bool)_isRobotOnRailVariable.Value)
+                    {
+                        double position = 0.0;
+                        short result = _kx2Robot.MotorGetCurrentPosition(5, ref position);
+                        if (result == 0)
+                        {
+                            _axis5PositionVariable.Value = position;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error updating axis position variables: {ex.Message}");
+                }
             }
             catch (Exception ex)
             {
