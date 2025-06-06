@@ -69,6 +69,8 @@ namespace KX2RobotOpcUa
         private BaseDataVariableState _isMovingVariable;
         private BaseDataVariableState _isRobotOnRailVariable;
         private BaseDataVariableState _isScriptRunningVariable;
+        private BaseDataVariableState _isZMaintenanceRequiredVariable;
+        private BaseDataVariableState _isRailMaintenanceRequiredVariable;
         private BaseDataVariableState _errorCodeVariable;
         private BaseDataVariableState _errorMessageVariable;
         private BaseDataVariableState _axis1PositionVariable; // Shoulder
@@ -220,6 +222,14 @@ namespace KX2RobotOpcUa
                         _isScriptRunningVariable = CreateVariable(_statusFolder, "IsScriptRunning", "IsScriptRunning", DataTypeIds.Boolean, ValueRanks.Scalar);
                         _isScriptRunningVariable.Value = false;
                         _isScriptRunningVariable.Description = new LocalizedText("en", "Indicates whether a script is currently running");
+
+                        _isZMaintenanceRequiredVariable = CreateVariable(_statusFolder, "IsZMaintenanceRequired", "Z-Axis Maintenance Required", DataTypeIds.Boolean, ValueRanks.Scalar);
+                        _isZMaintenanceRequiredVariable.Value = false;
+                        _isZMaintenanceRequiredVariable.Description = new LocalizedText("en", "Indicates whether the Z-axis requires maintenance");
+
+                        _isRailMaintenanceRequiredVariable = CreateVariable(_statusFolder, "IsRailMaintenanceRequired", "Rail Maintenance Required", DataTypeIds.Boolean, ValueRanks.Scalar);
+                        _isRailMaintenanceRequiredVariable.Value = false;
+                        _isRailMaintenanceRequiredVariable.Description = new LocalizedText("en", "Indicates whether the Rail axis requires maintenance");
 
                         // Create axis position variables
                         Console.WriteLine("Creating axis position variables...");
@@ -1021,6 +1031,44 @@ namespace KX2RobotOpcUa
                         Console.WriteLine($"Error updating IsScriptRunning variable: {ex.Message}");
                         // Set to false if there's an error
                         _isScriptRunningVariable.Value = false;
+                    }
+                }
+
+                // Update Z-axis maintenance status
+                if (_isZMaintenanceRequiredVariable != null)
+                {
+                    try
+                    {
+                        bool isRequired = false;
+                        short result = _kx2Robot.IsMaintenanceRequired(ref isRequired);
+                        if (result == 0)
+                        {
+                            _isZMaintenanceRequiredVariable.Value = isRequired;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error updating IsZMaintenanceRequired variable: {ex.Message}");
+                        // Keep previous value if there's an error
+                    }
+                }
+
+                // Update Rail maintenance status
+                if (_isRailMaintenanceRequiredVariable != null)
+                {
+                    try
+                    {
+                        bool isRequired = false;
+                        short result = _kx2Robot.IsRailMaintenanceRequired(ref isRequired);
+                        if (result == 0)
+                        {
+                            _isRailMaintenanceRequiredVariable.Value = isRequired;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error updating IsRailMaintenanceRequired variable: {ex.Message}");
+                        // Keep previous value if there's an error
                     }
                 }
 
