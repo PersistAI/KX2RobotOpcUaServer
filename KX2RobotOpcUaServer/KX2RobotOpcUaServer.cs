@@ -71,6 +71,7 @@ namespace KX2RobotOpcUa
         private BaseDataVariableState _isScriptRunningVariable;
         private BaseDataVariableState _isZMaintenanceRequiredVariable;
         private BaseDataVariableState _isRailMaintenanceRequiredVariable;
+        private BaseDataVariableState _moveCountVariable;
         private BaseDataVariableState _errorCodeVariable;
         private BaseDataVariableState _errorMessageVariable;
         private BaseDataVariableState _axis1PositionVariable; // Shoulder
@@ -230,6 +231,10 @@ namespace KX2RobotOpcUa
                         _isRailMaintenanceRequiredVariable = CreateVariable(_statusFolder, "IsRailMaintenanceRequired", "Rail Maintenance Required", DataTypeIds.Boolean, ValueRanks.Scalar);
                         _isRailMaintenanceRequiredVariable.Value = false;
                         _isRailMaintenanceRequiredVariable.Description = new LocalizedText("en", "Indicates whether the Rail axis requires maintenance");
+
+                        _moveCountVariable = CreateVariable(_statusFolder, "MoveCount", "Move Count", DataTypeIds.Int32, ValueRanks.Scalar);
+                        _moveCountVariable.Value = 0;
+                        _moveCountVariable.Description = new LocalizedText("en", "Total accumulated number of moves executed by the robot");
 
                         // Create axis position variables
                         Console.WriteLine("Creating axis position variables...");
@@ -1068,6 +1073,25 @@ namespace KX2RobotOpcUa
                     catch (Exception ex)
                     {
                         Console.WriteLine($"Error updating IsRailMaintenanceRequired variable: {ex.Message}");
+                        // Keep previous value if there's an error
+                    }
+                }
+
+                // Update MoveCount variable
+                if (_moveCountVariable != null)
+                {
+                    try
+                    {
+                        int moveCount = 0;
+                        short result = _kx2Robot.MoveCountGet(ref moveCount);
+                        if (result == 0)
+                        {
+                            _moveCountVariable.Value = moveCount;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error updating MoveCount variable: {ex.Message}");
                         // Keep previous value if there's an error
                     }
                 }
