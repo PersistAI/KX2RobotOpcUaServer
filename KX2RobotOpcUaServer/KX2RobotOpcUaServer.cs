@@ -17,7 +17,7 @@ using LabEquipmentOpcUa;
 namespace KX2RobotOpcUa
 {
     /// <summary>
-    /// KX2 Robot Node Manager for OPC UA Server
+    /// KX2 Robot Node Manager for OPC UA Server    
     /// </summary>
     public class KX2RobotNodeManager : CustomNodeManager2, IEquipmentNodeManager, INodeManagerFactory
     {
@@ -210,8 +210,16 @@ namespace KX2RobotOpcUa
                         _isInitializedVariable = CreateVariable(_statusFolder, "IsInitialized", "IsInitialized", DataTypeIds.Boolean, ValueRanks.Scalar);
                         _isInitializedVariable.Value = false;
 
+                        _isMovingVariable = CreateVariable(_statusFolder, "IsMoving", "IsMoving", DataTypeIds.Boolean, ValueRanks.Scalar);
+                        _isMovingVariable.Value = false;
+                        _isMovingVariable.Description = new LocalizedText("en", "Indicates whether any axis of the robot is currently moving");
+
                         _isRobotOnRailVariable = CreateVariable(_statusFolder, "IsRobotOnRail", "IsRobotOnRail", DataTypeIds.Boolean, ValueRanks.Scalar);
                         _isRobotOnRailVariable.Value = false;
+
+                        _isScriptRunningVariable = CreateVariable(_statusFolder, "IsScriptRunning", "IsScriptRunning", DataTypeIds.Boolean, ValueRanks.Scalar);
+                        _isScriptRunningVariable.Value = false;
+                        _isScriptRunningVariable.Description = new LocalizedText("en", "Indicates whether a script is currently running");
 
                         // Create axis position variables
                         Console.WriteLine("Creating axis position variables...");
@@ -952,6 +960,40 @@ namespace KX2RobotOpcUa
                     }
                 }
 
+                // Update IsMoving variable
+                if (_isMovingVariable != null)
+                {
+                    try
+                    {
+                        bool isAnyAxisMoving = false;
+
+                        // Check each axis
+                        for (short axis = 1; axis <= 5; axis++)
+                        {
+                            // Skip axis 5 if robot is not on rail
+                            if (axis == 5 && _isRobotOnRailVariable != null && !(bool)_isRobotOnRailVariable.Value)
+                                continue;
+
+                            bool isDone = true;
+                            short result = _kx2Robot.MotorCheckIfMoveDone(axis, ref isDone);
+
+                            if (result == 0 && !isDone)
+                            {
+                                isAnyAxisMoving = true;
+                                break; // No need to check other axes if one is moving
+                            }
+                        }
+
+                        _isMovingVariable.Value = isAnyAxisMoving;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error updating IsMoving variable: {ex.Message}");
+                        // Set to false if there's an error
+                        _isMovingVariable.Value = false;
+                    }
+                }
+
                 // Update IsRobotOnRail variable
                 if (_isRobotOnRailVariable != null)
                 {
@@ -964,6 +1006,21 @@ namespace KX2RobotOpcUa
                         Console.WriteLine($"Error updating IsRobotOnRail variable: {ex.Message}");
                         // Set to false if there's an error
                         _isRobotOnRailVariable.Value = false;
+                    }
+                }
+
+                // Update IsScriptRunning variable
+                if (_isScriptRunningVariable != null)
+                {
+                    try
+                    {
+                        _isScriptRunningVariable.Value = _kx2Robot.IsScriptRunning();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error updating IsScriptRunning variable: {ex.Message}");
+                        // Set to false if there's an error
+                        _isScriptRunningVariable.Value = false;
                     }
                 }
 
