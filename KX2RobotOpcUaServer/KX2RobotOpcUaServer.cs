@@ -13,6 +13,7 @@ using Opc.Ua.Configuration;
 using Newtonsoft.Json;
 using KX2RobotControlNamespace;
 using LabEquipmentOpcUa;
+using static KX2RobotControlNamespace.KX2RobotControl;
 
 namespace KX2RobotOpcUa
 {
@@ -72,6 +73,7 @@ namespace KX2RobotOpcUa
         private BaseDataVariableState _isZMaintenanceRequiredVariable;
         private BaseDataVariableState _isRailMaintenanceRequiredVariable;
         private BaseDataVariableState _moveCountVariable;
+        private BaseDataVariableState _lastBarcodeVariable;
         private BaseDataVariableState _errorCodeVariable;
         private BaseDataVariableState _errorMessageVariable;
         private BaseDataVariableState _axis1PositionVariable; // Shoulder
@@ -204,7 +206,7 @@ namespace KX2RobotOpcUa
 
                         Console.WriteLine($"Root folder added to Objects folder with NodeId: {_robotFolder.NodeId}");
 
-                        // Create a single status folder with minimal variables
+                        // Create a single status folder with variables
                         Console.WriteLine("Creating status folder...");
                         _statusFolder = CreateFolder(_robotFolder, "Status", "Status");
 
@@ -219,6 +221,7 @@ namespace KX2RobotOpcUa
 
                         _isRobotOnRailVariable = CreateVariable(_statusFolder, "IsRobotOnRail", "IsRobotOnRail", DataTypeIds.Boolean, ValueRanks.Scalar);
                         _isRobotOnRailVariable.Value = false;
+                        _isRobotOnRailVariable.Description = new LocalizedText("en", "Indicates whether robot is on rails or not");
 
                         _isScriptRunningVariable = CreateVariable(_statusFolder, "IsScriptRunning", "IsScriptRunning", DataTypeIds.Boolean, ValueRanks.Scalar);
                         _isScriptRunningVariable.Value = false;
@@ -235,6 +238,10 @@ namespace KX2RobotOpcUa
                         _moveCountVariable = CreateVariable(_statusFolder, "MoveCount", "Move Count", DataTypeIds.Int32, ValueRanks.Scalar);
                         _moveCountVariable.Value = 0;
                         _moveCountVariable.Description = new LocalizedText("en", "Total accumulated number of moves executed by the robot");
+
+                        _lastBarcodeVariable = CreateVariable(_statusFolder, "LastBarcode", "Last Barcode", DataTypeIds.String, ValueRanks.Scalar);
+                        _lastBarcodeVariable.Value = "";
+                        _lastBarcodeVariable.Description = new LocalizedText("en", "The most recently read barcode");
 
                         // Create axis position variables
                         Console.WriteLine("Creating axis position variables...");
@@ -272,6 +279,7 @@ namespace KX2RobotOpcUa
                         CreateMethod(_commandsFolder, "MoveToTeachPoint", "MoveToTeachPoint", OnMoveToTeachPoint);
                         CreateMethod(_commandsFolder, "ExecuteSequence", "ExecuteSequence", OnExecuteSequence);
                         CreateMethod(_commandsFolder, "UpdateVariable", "UpdateVariable", OnUpdateVariable);
+                        CreateMethod(_commandsFolder, "ReadBarcode", "Read Barcode", OnReadBarcode);
 
                         // Create teach points folder and nodes
                         Console.WriteLine("Creating teach points folder...");
@@ -677,6 +685,27 @@ namespace KX2RobotOpcUa
                         method.OutputArguments.Value = new Argument[]
                         {
                         new Argument { Name = "Result", Description = "Result code (0 = success)", DataType = DataTypeIds.Int32, ValueRank = ValueRanks.Scalar }
+                        };
+
+                        method.OnCallMethod = onCalled;
+                        break;
+
+                    case "ReadBarcode":
+                        // No input arguments needed
+
+                        method.OutputArguments = new PropertyState<Argument[]>(method);
+                        method.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                        method.OutputArguments.BrowseName = BrowseNames.OutputArguments;
+                        method.OutputArguments.DisplayName = method.OutputArguments.BrowseName.Name;
+                        method.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                        method.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                        method.OutputArguments.DataType = DataTypeIds.Argument;
+                        method.OutputArguments.ValueRank = ValueRanks.OneDimension;
+
+                        method.OutputArguments.Value = new Argument[]
+                        {
+                        new Argument { Name = "Result", Description = "Result code (0 = success)", DataType = DataTypeIds.Int16, ValueRank = ValueRanks.Scalar },
+                        new Argument { Name = "Barcode", Description = "The scanned barcode (if successful)", DataType = DataTypeIds.String, ValueRank = ValueRanks.Scalar }
                         };
 
                         method.OnCallMethod = onCalled;
@@ -1482,6 +1511,42 @@ namespace KX2RobotOpcUa
             {
                 Utils.Trace(ex, "Error updating variable {0}: {1}", variableName, ex.Message);
                 return -1; // Error
+            }
+        }
+
+        /// <summary>
+        /// Handles the ReadBarcode method call.
+        /// </summary>
+        private ServiceResult OnReadBarcode(
+            ISystemContext context,
+            MethodState method,
+            IList<object> inputArguments,
+            IList<object> outputArguments)
+        {
+            try
+            {
+                // Read the barcode with default settings (SingleRead mode, 2 second timeout)
+                string barcode = "";
+                short result = _kx2Robot.BarcodeRead(true, eBCRReadMode.SingleRead, eBCRReadTime.TwoSeconds, ref barcode);
+
+                // Update the LastBarcode variable if successful
+                if (result == 0 && !string.IsNullOrEmpty(barcode))
+                {
+                    _lastBarcodeVariable.Value = barcode;
+                }
+
+                // Return the result code and barcode
+                outputArguments.Add(result);
+                outputArguments.Add(barcode);
+
+                return ServiceResult.Good;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error reading barcode: {ex.Message}");
+                outputArguments.Add((short)-1); // Error code
+                outputArguments.Add(""); // Empty barcode
+                return new ServiceResult(ex);
             }
         }
         #endregion
