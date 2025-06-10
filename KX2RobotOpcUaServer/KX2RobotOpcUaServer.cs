@@ -1559,6 +1559,19 @@ namespace KX2RobotOpcUa
             {
                 Console.WriteLine("OnReadBarcode method called");
 
+                // First, make sure the barcode reader is connected
+                Console.WriteLine("Connecting to barcode reader...");
+                short connectResult = _kx2Robot.BarcodeReaderConnect(true);
+                if (connectResult == 0)
+                {
+                    Console.WriteLine("Successfully connected to barcode reader");
+                }
+                else
+                {
+                    string errorDescription = _kx2Robot.GetErrorCode(connectResult);
+                    Console.WriteLine($"Error connecting to barcode reader: {errorDescription}");
+                }
+
                 // Read the barcode with default settings (SingleRead mode, 2 second timeout)
                 string barcode = "";
                 Console.WriteLine($"Calling BarcodeRead with parameters: WaitUntilDone=true, ReadMode={eBCRReadMode.SingleRead}, ReadTime={eBCRReadTime.TwoSeconds}");
