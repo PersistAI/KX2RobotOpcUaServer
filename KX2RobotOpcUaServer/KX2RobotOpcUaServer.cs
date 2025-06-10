@@ -74,6 +74,7 @@ namespace KX2RobotOpcUa
         private BaseDataVariableState _isRailMaintenanceRequiredVariable;
         private BaseDataVariableState _moveCountVariable;
         private BaseDataVariableState _lastBarcodeVariable;
+        private BaseDataVariableState _barcodeReaderVersionVariable;
         private BaseDataVariableState _errorCodeVariable;
         private BaseDataVariableState _errorMessageVariable;
         private BaseDataVariableState _axis1PositionVariable; // Shoulder
@@ -242,6 +243,10 @@ namespace KX2RobotOpcUa
                         _lastBarcodeVariable = CreateVariable(_statusFolder, "LastBarcode", "Last Barcode", DataTypeIds.String, ValueRanks.Scalar);
                         _lastBarcodeVariable.Value = "";
                         _lastBarcodeVariable.Description = new LocalizedText("en", "The most recently read barcode");
+
+                        _barcodeReaderVersionVariable = CreateVariable(_statusFolder, "BarcodeReaderVersion", "Barcode Reader Version", DataTypeIds.String, ValueRanks.Scalar);
+                        _barcodeReaderVersionVariable.Value = "";
+                        _barcodeReaderVersionVariable.Description = new LocalizedText("en", "The firmware version of the barcode reader");
 
                         // Create axis position variables
                         Console.WriteLine("Creating axis position variables...");
@@ -1134,6 +1139,24 @@ namespace KX2RobotOpcUa
                     }
                 }
 
+                // Update barcode reader version
+                if (_barcodeReaderVersionVariable != null)
+                {
+                    try
+                    {
+                        string swVersion = "";
+                        short result = _kx2Robot.BarcodeReaderGetSoftwareVersion(ref swVersion);
+                        if (result == 0)
+                        {
+                            _barcodeReaderVersionVariable.Value = swVersion;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error getting barcode reader version: {ex.Message}");
+                    }
+                }
+
                 // Update axis position variables
                 try
                 {
@@ -1534,27 +1557,47 @@ namespace KX2RobotOpcUa
         {
             try
             {
+                Console.WriteLine("OnReadBarcode method called");
+
                 // Read the barcode with default settings (SingleRead mode, 2 second timeout)
                 string barcode = "";
+                Console.WriteLine($"Calling BarcodeRead with parameters: WaitUntilDone=true, ReadMode={eBCRReadMode.SingleRead}, ReadTime={eBCRReadTime.TwoSeconds}");
+
                 short result = _kx2Robot.BarcodeRead(true, eBCRReadMode.SingleRead, eBCRReadTime.TwoSeconds, ref barcode);
+
+                Console.WriteLine($"BarcodeRead returned result code: {result}");
+                Console.WriteLine($"Barcode read: '{barcode}'");
 
                 // Update the LastBarcode variable if successful
                 if (result == 0 && !string.IsNullOrEmpty(barcode))
                 {
                     _lastBarcodeVariable.Value = barcode;
+                    Console.WriteLine($"Updated LastBarcode variable to: '{barcode}'");
                 }
 
                 // Return the result code and barcode
+                Console.WriteLine($"Adding to outputArguments: result={result}, barcode='{barcode}'");
                 outputArguments.Add(result);
                 outputArguments.Add(barcode);
+
+                Console.WriteLine($"outputArguments count: {outputArguments.Count}");
+                Console.WriteLine("OnReadBarcode method completed successfully");
 
                 return ServiceResult.Good;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error reading barcode: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+
                 outputArguments.Add((short)-1); // Error code
                 outputArguments.Add(""); // Empty barcode
+                Console.WriteLine("Added error code and empty barcode to outputArguments");
+
                 return new ServiceResult(ex);
             }
         }
