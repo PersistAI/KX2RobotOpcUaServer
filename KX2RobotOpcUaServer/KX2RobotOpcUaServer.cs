@@ -1574,6 +1574,15 @@ namespace KX2RobotOpcUa
                     _lastBarcodeVariable.Value = barcode;
                     Console.WriteLine($"Updated LastBarcode variable to: '{barcode}'");
                 }
+                else if (result != 0)
+                {
+                    string errorDescription = _kx2Robot.GetErrorCode(result);
+                    Console.WriteLine($"Error Description: {errorDescription}");
+
+                    // Also get Error Code 1 for more information as mentioned in the error message
+                    string errorCode1Description = _kx2Robot.GetErrorCode(1);
+                    Console.WriteLine($"Error Code 1 Description: {errorCode1Description}");
+                }
 
                 // Return the result code and barcode
                 Console.WriteLine($"Adding to outputArguments: result={result}, barcode='{barcode}'");
