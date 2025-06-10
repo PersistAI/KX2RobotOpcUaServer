@@ -290,6 +290,7 @@ namespace KX2RobotOpcUa
                         CreateMethod(_commandsFolder, "ExecuteSequence", "ExecuteSequence", OnExecuteSequence);
                         CreateMethod(_commandsFolder, "UpdateVariable", "UpdateVariable", OnUpdateVariable);
                         CreateMethod(_commandsFolder, "ReadBarcode", "Read Barcode", OnReadBarcode);
+                        CreateMethod(_commandsFolder, "SetBarcodeReaderPort", "Set Barcode Reader Port", OnSetBarcodeReaderPort);
 
                         // Create teach points folder and nodes
                         Console.WriteLine("Creating teach points folder...");
@@ -725,6 +726,39 @@ namespace KX2RobotOpcUa
                         {
                         new Argument { Name = "Result", Description = "Result code (0 = success)", DataType = DataTypeIds.Int16, ValueRank = ValueRanks.Scalar },
                         new Argument { Name = "Barcode", Description = "The scanned barcode (if successful)", DataType = DataTypeIds.String, ValueRank = ValueRanks.Scalar }
+                        };
+
+                        method.OnCallMethod = onCalled;
+                        break;
+
+                    case "SetBarcodeReaderPort":
+                        method.InputArguments = new PropertyState<Argument[]>(method);
+                        method.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                        method.InputArguments.BrowseName = BrowseNames.InputArguments;
+                        method.InputArguments.DisplayName = method.InputArguments.BrowseName.Name;
+                        method.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                        method.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                        method.InputArguments.DataType = DataTypeIds.Argument;
+                        method.InputArguments.ValueRank = ValueRanks.OneDimension;
+
+                        method.InputArguments.Value = new Argument[]
+                        {
+                            new Argument { Name = "PortNum", Description = "COM port number (1-255)", DataType = DataTypeIds.Byte, ValueRank = ValueRanks.Scalar }
+                        };
+
+                        method.OutputArguments = new PropertyState<Argument[]>(method);
+                        method.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                        method.OutputArguments.BrowseName = BrowseNames.OutputArguments;
+                        method.OutputArguments.DisplayName = method.OutputArguments.BrowseName.Name;
+                        method.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                        method.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                        method.OutputArguments.DataType = DataTypeIds.Argument;
+                        method.OutputArguments.ValueRank = ValueRanks.OneDimension;
+
+                        method.OutputArguments.Value = new Argument[]
+                        {
+                            new Argument { Name = "Result", Description = "Result code (0 = success)", DataType = DataTypeIds.Int16, ValueRank = ValueRanks.Scalar },
+                            new Argument { Name = "Message", Description = "Result message", DataType = DataTypeIds.String, ValueRank = ValueRanks.Scalar }
                         };
 
                         method.OnCallMethod = onCalled;
@@ -1562,6 +1596,73 @@ namespace KX2RobotOpcUa
             {
                 Utils.Trace(ex, "Error updating variable {0}: {1}", variableName, ex.Message);
                 return -1; // Error
+            }
+        }
+
+        /// <summary>
+        /// Handles the SetBarcodeReaderPort method call.
+        /// </summary>
+        private ServiceResult OnSetBarcodeReaderPort(
+            ISystemContext context,
+            MethodState method,
+            IList<object> inputArguments,
+            IList<object> outputArguments)
+        {
+            try
+            {
+                Console.WriteLine("OnSetBarcodeReaderPort method called");
+
+                // Get the port number from the input arguments
+                byte portNum = Convert.ToByte(inputArguments[0]);
+                Console.WriteLine($"Setting barcode reader port to COM{portNum}");
+
+                // Set the port number in the registry
+                _kx2Robot.SetBarcodeReaderSerialPort(portNum);
+                Console.WriteLine("Port number saved to registry");
+
+                // Update the status variable
+                _barcodeReaderPortVariable.Value = portNum;
+
+                // Close the current connection
+                Console.WriteLine("Closing current barcode reader connection...");
+                _kx2Robot.BarcodeReaderConnect(false);
+
+                // Try to connect to the barcode reader with the new port
+                Console.WriteLine("Connecting to barcode reader with new port...");
+                short connectResult = _kx2Robot.BarcodeReaderConnect(true);
+
+                if (connectResult == 0)
+                {
+                    Console.WriteLine("Successfully connected to barcode reader");
+                    outputArguments.Add((short)0); // Success
+                    outputArguments.Add("Successfully connected to barcode reader");
+                }
+                else
+                {
+                    string errorDescription = _kx2Robot.GetErrorCode(connectResult);
+                    string errorCode1Description = _kx2Robot.GetErrorCode(1);
+                    Console.WriteLine($"Error connecting to barcode reader: {errorDescription}");
+                    Console.WriteLine($"Error Code 1 Description: {errorCode1Description}");
+
+                    outputArguments.Add(connectResult); // Error code
+                    outputArguments.Add($"Error: {errorDescription}. {errorCode1Description}");
+                }
+
+                return ServiceResult.Good;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error setting barcode reader port: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+
+                outputArguments.Add((short)-1); // Error code
+                outputArguments.Add($"Exception: {ex.Message}");
+
+                return new ServiceResult(ex);
             }
         }
 
