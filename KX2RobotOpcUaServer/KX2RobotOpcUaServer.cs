@@ -691,7 +691,16 @@ namespace KX2RobotOpcUa
                         break;
 
                     case "ReadBarcode":
-                        // No input arguments needed
+                        // Add empty input arguments property
+                        method.InputArguments = new PropertyState<Argument[]>(method);
+                        method.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                        method.InputArguments.BrowseName = BrowseNames.InputArguments;
+                        method.InputArguments.DisplayName = method.InputArguments.BrowseName.Name;
+                        method.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                        method.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                        method.InputArguments.DataType = DataTypeIds.Argument;
+                        method.InputArguments.ValueRank = ValueRanks.OneDimension;
+                        method.InputArguments.Value = new Argument[0]; // Empty array, no input arguments
 
                         method.OutputArguments = new PropertyState<Argument[]>(method);
                         method.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
