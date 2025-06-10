@@ -75,6 +75,7 @@ namespace KX2RobotOpcUa
         private BaseDataVariableState _moveCountVariable;
         private BaseDataVariableState _lastBarcodeVariable;
         private BaseDataVariableState _barcodeReaderVersionVariable;
+        private BaseDataVariableState _barcodeReaderPortVariable;
         private BaseDataVariableState _errorCodeVariable;
         private BaseDataVariableState _errorMessageVariable;
         private BaseDataVariableState _axis1PositionVariable; // Shoulder
@@ -247,6 +248,10 @@ namespace KX2RobotOpcUa
                         _barcodeReaderVersionVariable = CreateVariable(_statusFolder, "BarcodeReaderVersion", "Barcode Reader Version", DataTypeIds.String, ValueRanks.Scalar);
                         _barcodeReaderVersionVariable.Value = "";
                         _barcodeReaderVersionVariable.Description = new LocalizedText("en", "The firmware version of the barcode reader");
+
+                        _barcodeReaderPortVariable = CreateVariable(_statusFolder, "BarcodeReaderPort", "Barcode Reader COM Port", DataTypeIds.Byte, ValueRanks.Scalar);
+                        _barcodeReaderPortVariable.Value = _kx2Robot.GetBarcodeReaderSerialPort();
+                        _barcodeReaderPortVariable.Description = new LocalizedText("en", "The COM port number used for the barcode reader");
 
                         // Create axis position variables
                         Console.WriteLine("Creating axis position variables...");
@@ -1154,6 +1159,20 @@ namespace KX2RobotOpcUa
                     catch (Exception ex)
                     {
                         Console.WriteLine($"Error getting barcode reader version: {ex.Message}");
+                    }
+                }
+
+                // Update barcode reader port
+                if (_barcodeReaderPortVariable != null)
+                {
+                    try
+                    {
+                        byte portNum = _kx2Robot.GetBarcodeReaderSerialPort();
+                        _barcodeReaderPortVariable.Value = portNum;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error getting barcode reader port: {ex.Message}");
                     }
                 }
 
