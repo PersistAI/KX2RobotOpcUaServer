@@ -1577,21 +1577,7 @@ namespace KX2RobotOpcUa
         {
             try
             {
-                //Console.WriteLine("OnReadBarcode method called");
-
-                //// First, make sure the barcode reader is connected
-                //Console.WriteLine("Connecting to barcode reader...");
-                //short connectResult = _kx2Robot.BarcodeReaderConnect(true);
-                //if (connectResult == 0)
-                //{
-                //    Console.WriteLine("Successfully connected to barcode reader");
-                //}
-                //else
-                //{
-                //    string errorDescription = _kx2Robot.GetErrorCode(connectResult);
-                //    Console.WriteLine($"Error connecting to barcode reader: {errorDescription}");
-                //}
-
+                Console.WriteLine("OnReadBarcode method called");
                 // Read the barcode with default settings (SingleRead mode, 2 second timeout)
                 string barcode = "";
                 Console.WriteLine($"Calling BarcodeRead with parameters: WaitUntilDone=true, ReadMode={eBCRReadMode.SingleRead}, ReadTime={eBCRReadTime.TwoSeconds}");
@@ -1620,7 +1606,8 @@ namespace KX2RobotOpcUa
                     barcode = "";
                 }
 
-                // Return just the barcode
+                // Clear any existing output arguments and add just the barcode
+                outputArguments.Clear();
                 Console.WriteLine($"Adding to outputArguments: barcode='{barcode}'");
                 outputArguments.Add(barcode);
 
@@ -1638,7 +1625,8 @@ namespace KX2RobotOpcUa
                     Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
                 }
 
-                // Return empty string on error
+                // Clear any existing output arguments and add empty barcode on error
+                outputArguments.Clear();
                 outputArguments.Add(""); // Empty barcode
                 Console.WriteLine("Added empty barcode to outputArguments");
 
