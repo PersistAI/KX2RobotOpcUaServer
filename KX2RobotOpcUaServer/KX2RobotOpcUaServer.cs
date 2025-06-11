@@ -290,7 +290,6 @@ namespace KX2RobotOpcUa
                         CreateMethod(_commandsFolder, "ExecuteSequence", "ExecuteSequence", OnExecuteSequence);
                         CreateMethod(_commandsFolder, "UpdateVariable", "UpdateVariable", OnUpdateVariable);
                         CreateMethod(_commandsFolder, "ReadBarcode", "Read Barcode", OnReadBarcode);
-                        CreateMethod(_commandsFolder, "SetBarcodeReaderPort", "Set Barcode Reader Port", OnSetBarcodeReaderPort);
 
                         // Create teach points folder and nodes
                         Console.WriteLine("Creating teach points folder...");
@@ -724,45 +723,12 @@ namespace KX2RobotOpcUa
 
                         method.OutputArguments.Value = new Argument[]
                         {
-                        new Argument { Name = "Result", Description = "Result code (0 = success)", DataType = DataTypeIds.Int16, ValueRank = ValueRanks.Scalar },
-                        new Argument { Name = "Barcode", Description = "The scanned barcode (if successful)", DataType = DataTypeIds.String, ValueRank = ValueRanks.Scalar }
+                        new Argument { Name = "Barcode", Description = "The scanned barcode", DataType = DataTypeIds.String, ValueRank = ValueRanks.Scalar }
                         };
 
                         method.OnCallMethod = onCalled;
                         break;
 
-                    case "SetBarcodeReaderPort":
-                        method.InputArguments = new PropertyState<Argument[]>(method);
-                        method.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                        method.InputArguments.BrowseName = BrowseNames.InputArguments;
-                        method.InputArguments.DisplayName = method.InputArguments.BrowseName.Name;
-                        method.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                        method.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                        method.InputArguments.DataType = DataTypeIds.Argument;
-                        method.InputArguments.ValueRank = ValueRanks.OneDimension;
-
-                        method.InputArguments.Value = new Argument[]
-                        {
-                            new Argument { Name = "PortNum", Description = "COM port number (1-255)", DataType = DataTypeIds.Byte, ValueRank = ValueRanks.Scalar }
-                        };
-
-                        method.OutputArguments = new PropertyState<Argument[]>(method);
-                        method.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                        method.OutputArguments.BrowseName = BrowseNames.OutputArguments;
-                        method.OutputArguments.DisplayName = method.OutputArguments.BrowseName.Name;
-                        method.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                        method.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                        method.OutputArguments.DataType = DataTypeIds.Argument;
-                        method.OutputArguments.ValueRank = ValueRanks.OneDimension;
-
-                        method.OutputArguments.Value = new Argument[]
-                        {
-                            new Argument { Name = "Result", Description = "Result code (0 = success)", DataType = DataTypeIds.Int16, ValueRank = ValueRanks.Scalar },
-                            new Argument { Name = "Message", Description = "Result message", DataType = DataTypeIds.String, ValueRank = ValueRanks.Scalar }
-                        };
-
-                        method.OnCallMethod = onCalled;
-                        break;
                 }
 
                 return method;
@@ -1599,72 +1565,6 @@ namespace KX2RobotOpcUa
             }
         }
 
-        /// <summary>
-        /// Handles the SetBarcodeReaderPort method call.
-        /// </summary>
-        private ServiceResult OnSetBarcodeReaderPort(
-            ISystemContext context,
-            MethodState method,
-            IList<object> inputArguments,
-            IList<object> outputArguments)
-        {
-            try
-            {
-                Console.WriteLine("OnSetBarcodeReaderPort method called");
-
-                // Get the port number from the input arguments
-                byte portNum = Convert.ToByte(inputArguments[0]);
-                Console.WriteLine($"Setting barcode reader port to COM{portNum}");
-
-                // Set the port number in the registry
-                _kx2Robot.SetBarcodeReaderSerialPort(portNum);
-                Console.WriteLine("Port number saved to registry");
-
-                // Update the status variable
-                _barcodeReaderPortVariable.Value = portNum;
-
-                // Close the current connection
-                Console.WriteLine("Closing current barcode reader connection...");
-                _kx2Robot.BarcodeReaderConnect(false);
-
-                // Try to connect to the barcode reader with the new port
-                Console.WriteLine("Connecting to barcode reader with new port...");
-                short connectResult = _kx2Robot.BarcodeReaderConnect(true);
-
-                if (connectResult == 0)
-                {
-                    Console.WriteLine("Successfully connected to barcode reader");
-                    outputArguments.Add((short)0); // Success
-                    outputArguments.Add("Successfully connected to barcode reader");
-                }
-                else
-                {
-                    string errorDescription = _kx2Robot.GetErrorCode(connectResult);
-                    string errorCode1Description = _kx2Robot.GetErrorCode(1);
-                    Console.WriteLine($"Error connecting to barcode reader: {errorDescription}");
-                    Console.WriteLine($"Error Code 1 Description: {errorCode1Description}");
-
-                    outputArguments.Add(connectResult); // Error code
-                    outputArguments.Add($"Error: {errorDescription}. {errorCode1Description}");
-                }
-
-                return ServiceResult.Good;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error setting barcode reader port: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
-                }
-
-                outputArguments.Add((short)-1); // Error code
-                outputArguments.Add($"Exception: {ex.Message}");
-
-                return new ServiceResult(ex);
-            }
-        }
 
         /// <summary>
         /// Handles the ReadBarcode method call.
@@ -1677,20 +1577,20 @@ namespace KX2RobotOpcUa
         {
             try
             {
-                Console.WriteLine("OnReadBarcode method called");
+                //Console.WriteLine("OnReadBarcode method called");
 
-                // First, make sure the barcode reader is connected
-                Console.WriteLine("Connecting to barcode reader...");
-                short connectResult = _kx2Robot.BarcodeReaderConnect(true);
-                if (connectResult == 0)
-                {
-                    Console.WriteLine("Successfully connected to barcode reader");
-                }
-                else
-                {
-                    string errorDescription = _kx2Robot.GetErrorCode(connectResult);
-                    Console.WriteLine($"Error connecting to barcode reader: {errorDescription}");
-                }
+                //// First, make sure the barcode reader is connected
+                //Console.WriteLine("Connecting to barcode reader...");
+                //short connectResult = _kx2Robot.BarcodeReaderConnect(true);
+                //if (connectResult == 0)
+                //{
+                //    Console.WriteLine("Successfully connected to barcode reader");
+                //}
+                //else
+                //{
+                //    string errorDescription = _kx2Robot.GetErrorCode(connectResult);
+                //    Console.WriteLine($"Error connecting to barcode reader: {errorDescription}");
+                //}
 
                 // Read the barcode with default settings (SingleRead mode, 2 second timeout)
                 string barcode = "";
@@ -1715,11 +1615,13 @@ namespace KX2RobotOpcUa
                     // Also get Error Code 1 for more information as mentioned in the error message
                     string errorCode1Description = _kx2Robot.GetErrorCode(1);
                     Console.WriteLine($"Error Code 1 Description: {errorCode1Description}");
+
+                    // Return empty string if there was an error
+                    barcode = "";
                 }
 
-                // Return the result code and barcode
-                Console.WriteLine($"Adding to outputArguments: result={result}, barcode='{barcode}'");
-                outputArguments.Add(result);
+                // Return just the barcode
+                Console.WriteLine($"Adding to outputArguments: barcode='{barcode}'");
                 outputArguments.Add(barcode);
 
                 Console.WriteLine($"outputArguments count: {outputArguments.Count}");
@@ -1736,9 +1638,9 @@ namespace KX2RobotOpcUa
                     Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
                 }
 
-                outputArguments.Add((short)-1); // Error code
+                // Return empty string on error
                 outputArguments.Add(""); // Empty barcode
-                Console.WriteLine("Added error code and empty barcode to outputArguments");
+                Console.WriteLine("Added empty barcode to outputArguments");
 
                 return new ServiceResult(ex);
             }
