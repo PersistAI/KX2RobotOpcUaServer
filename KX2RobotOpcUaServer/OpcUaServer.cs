@@ -258,10 +258,10 @@ namespace LabEquipmentOpcUa
             nodeManagerFactories.Add(kx2Factory);
             _equipmentManagers.Add((IEquipmentNodeManager)kx2Factory);
 
-            // Future equipment can be added here:
-            // var tecanFactory = new TecanOpcUa.TecanNodeManagerFactory(this);
-            // nodeManagerFactories.Add(tecanFactory);
-            // _equipmentManagers.Add((IEquipmentNodeManager)tecanFactory);
+            // Create the Tecan factory
+            var tecanFactory = new TecanOpcUa.TecanNodeManagerFactory(this);
+            nodeManagerFactories.Add(tecanFactory);
+            _equipmentManagers.Add((IEquipmentNodeManager)tecanFactory);
 
             // Add the node manager factories to the server
             Console.WriteLine("Adding node manager factories to server...");
