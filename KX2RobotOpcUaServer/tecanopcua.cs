@@ -86,7 +86,7 @@ namespace TecanOpcUa
         }
 
         /// <summary>
-        /// Discovers available Tecan devices using the InstrumentServer.DetectDevices method
+        /// Discovers available Tecan devices using the InstrumentServer methods
         /// </summary>
         /// <returns>Number of devices discovered</returns>
         public int DiscoverDevices()
@@ -100,11 +100,78 @@ namespace TecanOpcUa
 
                 try
                 {
+                    Console.WriteLine("Creating InstrumentServer instance...");
                     // Create instrument server
                     InstrumentServer instrumentServer = new InstrumentServer();
+                    Console.WriteLine("InstrumentServer created successfully");
 
-                    // Detect USB Reader devices
-                    List<DeviceOnPort> devices = instrumentServer.DetectDevices("USB", "READER");
+                    List<DeviceOnPort> devices = null;
+
+                    // Try multiple approaches to discover devices
+                    try
+                    {
+                        // Approach 1: Try using GetInstruments method with a filter string
+                        Console.WriteLine("Trying GetInstruments method with filter...");
+                        string connectionString = "PORTTYPE=USB, TYPE=READER";
+                        Console.WriteLine($"Using connection string: {connectionString}");
+
+                        // GetInstruments returns InstrumentOnPort objects, which we'll convert to DeviceOnPort
+                        List<InstrumentOnPort> instruments = instrumentServer.GetInstruments(connectionString);
+
+                        if (instruments != null && instruments.Count > 0)
+                        {
+                            Console.WriteLine($"Found {instruments.Count} instruments using GetInstruments");
+                            devices = new List<DeviceOnPort>();
+
+                            foreach (var instrument in instruments)
+                            {
+                                devices.Add(instrument.Device);
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("No instruments found using GetInstruments");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error using GetInstruments: {ex.Message}");
+                        Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+                    }
+
+                    // If GetInstruments failed, try DetectDevices with null parameters
+                    if (devices == null || devices.Count == 0)
+                    {
+                        try
+                        {
+                            Console.WriteLine("Trying DetectDevices with null parameters...");
+                            devices = instrumentServer.DetectDevices(null, null);
+                            Console.WriteLine($"Found {(devices != null ? devices.Count : 0)} devices using DetectDevices(null, null)");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error using DetectDevices(null, null): {ex.Message}");
+                            Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+                        }
+                    }
+
+                    // If that failed too, try with just USB filter
+                    if (devices == null || devices.Count == 0)
+                    {
+                        try
+                        {
+                            Console.WriteLine("Trying DetectDevices with USB filter only...");
+                            devices = instrumentServer.DetectDevices("USB", null);
+                            Console.WriteLine($"Found {(devices != null ? devices.Count : 0)} devices using DetectDevices(\"USB\", null)");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error using DetectDevices(\"USB\", null): {ex.Message}");
+                            Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+                        }
+                    }
+
+                    Console.WriteLine("Device discovery attempts completed");
 
                     if (devices != null && devices.Count > 0)
                     {
@@ -113,6 +180,8 @@ namespace TecanOpcUa
                         // Convert to our TecanDevice format
                         foreach (DeviceOnPort device in devices)
                         {
+                            Console.WriteLine($"Processing device: {device.m_sInstrumentName} ({device.m_sInstrumentType}) - {device.m_sInstrumentSerial}");
+
                             var tecanDevice = new TecanDevice
                             {
                                 Name = device.m_sInstrumentName,
@@ -129,12 +198,30 @@ namespace TecanOpcUa
                     }
                     else
                     {
-                        Console.WriteLine("No Tecan devices found");
+                        Console.WriteLine("No Tecan devices found (devices list is null or empty)");
+                    }
+                }
+                catch (ArgumentNullException anex)
+                {
+                    Console.WriteLine($"ArgumentNullException in DetectDevices:");
+                    Console.WriteLine($"Parameter: {anex.ParamName}");
+                    Console.WriteLine($"Message: {anex.Message}");
+                    Console.WriteLine($"Stack Trace: {anex.StackTrace}");
+                    if (anex.InnerException != null)
+                    {
+                        Console.WriteLine($"Inner Exception: {anex.InnerException}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error using InstrumentServer: {ex.Message}");
+                    Console.WriteLine($"Error using InstrumentServer:");
+                    Console.WriteLine($"Exception Type: {ex.GetType().FullName}");
+                    Console.WriteLine($"Message: {ex.Message}");
+                    Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+                    if (ex.InnerException != null)
+                    {
+                        Console.WriteLine($"Inner Exception: {ex.InnerException}");
+                    }
                 }
 
                 return _discoveredDevices.Count;
