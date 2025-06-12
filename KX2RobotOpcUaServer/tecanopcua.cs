@@ -9,10 +9,57 @@ using Tecan.At.Common.Settings;
 using LabEquipmentOpcUa;
 using Tecan.At.Measurement;
 using System.Linq;
+using System.Diagnostics;
+using Tecan.At.Communication.Port;
+using Tecan.At.Instrument;
 
 
 namespace TecanOpcUa
 {
+    /// <summary>
+    /// Represents a discovered Tecan device
+    /// </summary>
+    public class TecanDevice
+    {
+        /// <summary>
+        /// The name of the device (e.g., "Infinite 200Pro")
+        /// </summary>
+        public string Name { get; set; }
+
+        /// <summary>
+        /// The type of the device (e.g., "READER")
+        /// </summary>
+        public string Type { get; set; }
+
+        /// <summary>
+        /// The serial number of the device (e.g., "1812003347")
+        /// </summary>
+        public string Serial { get; set; }
+
+        /// <summary>
+        /// The port of the device (e.g., "USB/USB0")
+        /// </summary>
+        public string Port { get; set; }
+
+        /// <summary>
+        /// The driver information for the device
+        /// </summary>
+        public string Driver { get; set; }
+
+        /// <summary>
+        /// The connection string for the device
+        /// </summary>
+        public string ConnectionString { get; set; }
+
+        /// <summary>
+        /// Creates a string representation of the device
+        /// </summary>
+        public override string ToString()
+        {
+            return $"{Name} ({Type}) - {Serial} on {Port}";
+        }
+    }
+
     /// <summary>
     /// Tecan Control class for communicating with Tecan devices
     /// </summary>
@@ -21,9 +68,15 @@ namespace TecanOpcUa
         // Properties to store Tecan state
         private bool _isConnected = false;
         private bool _isPlateIn = false;
-        private string _serialNumber = "TECAN-SIM-12345";
+        private string _serialNumber = "";
         private double _temperature = 37.0;
         private MeasurementServer _measurementServer = null;
+
+        // List of discovered devices
+        private List<TecanDevice> _discoveredDevices = new List<TecanDevice>();
+
+        // Currently connected device
+        private TecanDevice _connectedDevice = null;
 
 
         // Constructor
@@ -32,7 +85,148 @@ namespace TecanOpcUa
             // Initialize any required resources
         }
 
-        // Connect to the Tecan device - simple method with no parameters
+        /// <summary>
+        /// Discovers available Tecan devices using the InstrumentServer.DetectDevices method
+        /// </summary>
+        /// <returns>Number of devices discovered</returns>
+        public int DiscoverDevices()
+        {
+            try
+            {
+                Console.WriteLine("Discovering Tecan devices...");
+
+                // Clear previous discoveries
+                _discoveredDevices.Clear();
+
+                try
+                {
+                    // Create instrument server
+                    InstrumentServer instrumentServer = new InstrumentServer();
+
+                    // Detect USB Reader devices
+                    List<DeviceOnPort> devices = instrumentServer.DetectDevices("USB", "READER");
+
+                    if (devices != null && devices.Count > 0)
+                    {
+                        Console.WriteLine($"Found {devices.Count} Tecan devices");
+
+                        // Convert to our TecanDevice format
+                        foreach (DeviceOnPort device in devices)
+                        {
+                            var tecanDevice = new TecanDevice
+                            {
+                                Name = device.m_sInstrumentName,
+                                Type = device.m_sInstrumentType,
+                                Serial = device.m_sInstrumentSerial,
+                                Port = $"{device.m_sPortType}/{device.m_sPort}",
+                                Driver = device.m_sDriver,
+                                ConnectionString = BuildConnectionString(device)
+                            };
+
+                            _discoveredDevices.Add(tecanDevice);
+                            Console.WriteLine($"  - {tecanDevice}");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("No Tecan devices found");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error using InstrumentServer: {ex.Message}");
+                }
+
+                return _discoveredDevices.Count;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error discovering devices: {ex.Message}");
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// Builds a connection string for a device
+        /// </summary>
+        private string BuildConnectionString(DeviceOnPort device)
+        {
+            return $"porttype={device.m_sPortType}, type={device.m_sInstrumentType.ToLower()}, option=default, name={device.m_sInstrumentName}";
+        }
+
+        /// <summary>
+        /// Gets the list of discovered devices
+        /// </summary>
+        public List<TecanDevice> GetDiscoveredDevices()
+        {
+            return _discoveredDevices;
+        }
+
+        /// <summary>
+        /// Gets the currently connected device
+        /// </summary>
+        public TecanDevice GetConnectedDevice()
+        {
+            return _connectedDevice;
+        }
+
+        /// <summary>
+        /// Connect to a Tecan device by serial number
+        /// </summary>
+        /// <param name="deviceSerial">The serial number of the device to connect to</param>
+        /// <returns>0 for success, -1 for failure, -2 for device not found</returns>
+        public int ConnectBySerial(string deviceSerial)
+        {
+            try
+            {
+                if (_isConnected)
+                {
+                    Console.WriteLine("Already connected to a device. Disconnecting first...");
+                    Disconnect();
+                }
+
+                Console.WriteLine($"Connecting to Tecan device with serial: {deviceSerial}");
+
+                // Find the device in the discovered devices list
+                var device = _discoveredDevices.FirstOrDefault(d => d.Serial == deviceSerial);
+
+                if (device == null)
+                {
+                    Console.WriteLine($"Device with serial {deviceSerial} not found in discovered devices");
+                    return -2; // Device not found
+                }
+
+                // Use the MeasurementServer to connect
+                if (_measurementServer == null)
+                {
+                    _measurementServer = new MeasurementServer();
+                }
+
+                bool connected = _measurementServer.Connect(InstrumentConnectionMethod.Manually, device.ConnectionString);
+
+                if (connected)
+                {
+                    _isConnected = true;
+                    _connectedDevice = device;
+                    _serialNumber = device.Serial;
+                    Console.WriteLine($"Connected to Tecan device: {device}");
+                    return 0; // Success
+                }
+
+                Console.WriteLine($"Failed to connect to Tecan device: {device}");
+                return -1; // Failed
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error connecting to Tecan by serial: {ex.Message}");
+                return -1; // Error
+            }
+        }
+
+        /// <summary>
+        /// Connect to the Tecan device - simple method with no parameters
+        /// Uses the first discovered device or a default connection string
+        /// </summary>
         public int Connect()
         {
             try
@@ -40,17 +234,45 @@ namespace TecanOpcUa
                 if (_isConnected)
                     return 0; // Already connected
 
-                // connect to the device directly
-                Console.WriteLine("Connecting to Tecan device...");
+                // If we have no discovered devices, discover them now
+                if (_discoveredDevices.Count == 0)
+                {
+                    DiscoverDevices();
+                }
+
+                // If we have discovered devices, use the first one
+                if (_discoveredDevices.Count > 0)
+                {
+                    return ConnectBySerial(_discoveredDevices[0].Serial);
+                }
+
+                // Otherwise, use a default connection string
+                Console.WriteLine("Connecting to Tecan device with default parameters...");
 
                 // Use the MeasurementServer to connect
-                _measurementServer = new MeasurementServer();
+                if (_measurementServer == null)
+                {
+                    _measurementServer = new MeasurementServer();
+                }
+
                 bool connected = _measurementServer.Connect(InstrumentConnectionMethod.Manually, "porttype=USB, type=reader, option=default, name=*");
 
                 if (connected)
                 {
                     _isConnected = true;
                     _serialNumber = _measurementServer.ConnectedReader.Information.GetInstrumentSerial();
+
+                    // Create a device object for the connected device
+                    _connectedDevice = new TecanDevice
+                    {
+                        Name = _measurementServer.ConnectedReader.Information.GetProductName(),
+                        Type = "READER",
+                        Serial = _serialNumber,
+                        Port = "USB/USB0",
+                        Driver = "Unknown",
+                        ConnectionString = "porttype=USB, type=reader, option=default, name=*"
+                    };
+
                     Console.WriteLine($"Connected to Tecan device: {_serialNumber}");
                     return 0; // Success
                 }
@@ -65,7 +287,9 @@ namespace TecanOpcUa
             }
         }
 
-        // Disconnect from the Tecan device
+        /// <summary>
+        /// Disconnect from the Tecan device
+        /// </summary>
         public int Disconnect()
         {
             try
@@ -83,6 +307,7 @@ namespace TecanOpcUa
                 }
 
                 _isConnected = false;
+                _connectedDevice = null;
                 Console.WriteLine("Disconnected from Tecan device");
                 return 0; // Success
             }
@@ -221,6 +446,7 @@ namespace TecanOpcUa
         private FolderState _tecanFolder;
         private FolderState _statusFolder;
         private FolderState _commandsFolder;
+        private FolderState _discoveredDevicesFolder;
 
         // Status variables
         private BaseDataVariableState _isConnectedVariable;
@@ -230,6 +456,11 @@ namespace TecanOpcUa
         private BaseDataVariableState _productNameVariable;
         private BaseDataVariableState _modelVariable;
         private BaseDataVariableState _firmwareVersionVariable;
+        private BaseDataVariableState _connectedDeviceSerialVariable;
+        private BaseDataVariableState _deviceCountVariable;
+
+        // List to keep track of device variables
+        private List<FolderState> _deviceFolders = new List<FolderState>();
 
         // Constructor
         public TecanNodeManager(
@@ -282,16 +513,101 @@ namespace TecanOpcUa
         {
             try
             {
-                Console.WriteLine("TecanNodeManager.Initialize called - connecting to device");
+                Console.WriteLine("TecanNodeManager.Initialize called - discovering devices");
                 if (_tecan != null)
                 {
-                    // Automatically connect to the device when initialized
-                    _tecan.Connect();
+                    // Discover devices first
+                    _tecan.DiscoverDevices();
+
+                    // Update the device folders in the address space
+                    UpdateDeviceFolders();
+
+                    // Don't automatically connect - let the user choose which device to connect to
+                    Console.WriteLine("Tecan devices discovered. Ready for connection.");
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error in TecanNodeManager.Initialize: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Updates the device folders in the address space based on discovered devices
+        /// </summary>
+        private void UpdateDeviceFolders()
+        {
+            try
+            {
+                if (_discoveredDevicesFolder == null || _tecan == null)
+                    return;
+
+                // Get the list of discovered devices
+                var devices = _tecan.GetDiscoveredDevices();
+
+                // Update the device count
+                if (_deviceCountVariable != null)
+                {
+                    _deviceCountVariable.Value = devices.Count;
+                }
+
+                // Clear existing device folders
+                foreach (var folder in _deviceFolders)
+                {
+                    _discoveredDevicesFolder.RemoveChild(folder);
+                }
+                _deviceFolders.Clear();
+
+                // Create a folder for each device
+                foreach (var device in devices)
+                {
+                    // Create a folder for the device
+                    FolderState deviceFolder = CreateFolder(_discoveredDevicesFolder, $"Device_{device.Serial}", device.Name);
+                    _deviceFolders.Add(deviceFolder);
+
+                    // Add variables for device properties
+                    CreateVariable(deviceFolder, "Name", "Name", DataTypeIds.String, ValueRanks.Scalar).Value = device.Name;
+                    CreateVariable(deviceFolder, "Type", "Type", DataTypeIds.String, ValueRanks.Scalar).Value = device.Type;
+                    CreateVariable(deviceFolder, "Serial", "Serial", DataTypeIds.String, ValueRanks.Scalar).Value = device.Serial;
+                    CreateVariable(deviceFolder, "Port", "Port", DataTypeIds.String, ValueRanks.Scalar).Value = device.Port;
+                    CreateVariable(deviceFolder, "Driver", "Driver", DataTypeIds.String, ValueRanks.Scalar).Value = device.Driver;
+
+                    // Add a method to connect to this device
+                    MethodState connectMethod = CreateMethod(deviceFolder, "Connect", "Connect");
+
+                    // Define empty input arguments for Connect
+                    connectMethod.InputArguments = new PropertyState<Argument[]>(connectMethod);
+                    connectMethod.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                    connectMethod.InputArguments.BrowseName = BrowseNames.InputArguments;
+                    connectMethod.InputArguments.DisplayName = connectMethod.InputArguments.BrowseName.Name;
+                    connectMethod.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                    connectMethod.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                    connectMethod.InputArguments.DataType = DataTypeIds.Argument;
+                    connectMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
+                    connectMethod.InputArguments.Value = new Argument[0]; // No input arguments
+
+                    // Define output arguments for Connect (returns result code)
+                    connectMethod.OutputArguments = new PropertyState<Argument[]>(connectMethod);
+                    connectMethod.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                    connectMethod.OutputArguments.BrowseName = BrowseNames.OutputArguments;
+                    connectMethod.OutputArguments.DisplayName = connectMethod.OutputArguments.BrowseName.Name;
+                    connectMethod.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                    connectMethod.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                    connectMethod.OutputArguments.DataType = DataTypeIds.Argument;
+                    connectMethod.OutputArguments.ValueRank = ValueRanks.OneDimension;
+
+                    Argument resultArgument = new Argument();
+                    resultArgument.Name = "Result";
+                    resultArgument.Description = new LocalizedText("Result code: 0=success, -1=failure");
+                    resultArgument.DataType = DataTypeIds.Int32;
+                    resultArgument.ValueRank = ValueRanks.Scalar;
+
+                    connectMethod.OutputArguments.Value = new Argument[] { resultArgument };
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error updating device folders: {ex.Message}");
             }
         }
 
@@ -358,6 +674,9 @@ namespace TecanOpcUa
                     _temperatureVariable = CreateVariable(_statusFolder, "Temperature", "Temperature", DataTypeIds.Double, ValueRanks.Scalar);
                     _temperatureVariable.Value = 0.0;
 
+                    _connectedDeviceSerialVariable = CreateVariable(_statusFolder, "ConnectedDeviceSerial", "Connected Device Serial", DataTypeIds.String, ValueRanks.Scalar);
+                    _connectedDeviceSerialVariable.Value = string.Empty;
+
                     // Create device info variables
                     FolderState deviceInfoFolder = CreateFolder(_statusFolder, "DeviceInfo", "DeviceInfo");
 
@@ -373,10 +692,88 @@ namespace TecanOpcUa
                     _firmwareVersionVariable = CreateVariable(deviceInfoFolder, "FirmwareVersion", "FirmwareVersion", DataTypeIds.String, ValueRanks.Scalar);
                     _firmwareVersionVariable.Value = string.Empty;
 
+                    // Create discovered devices folder
+                    _discoveredDevicesFolder = CreateFolder(_statusFolder, "DiscoveredDevices", "Discovered Devices");
+
+                    // Add device count variable
+                    _deviceCountVariable = CreateVariable(_discoveredDevicesFolder, "DeviceCount", "Device Count", DataTypeIds.Int32, ValueRanks.Scalar);
+                    _deviceCountVariable.Value = 0;
+
                     // Create commands folder
                     _commandsFolder = CreateFolder(_tecanFolder, "Commands", "Commands");
 
-                    // Create Connect method with no parameters
+                    // Create DiscoverDevices method
+                    MethodState discoverDevicesMethod = CreateMethod(_commandsFolder, "DiscoverDevices", "Discover Devices");
+
+                    // Define empty input arguments for DiscoverDevices
+                    discoverDevicesMethod.InputArguments = new PropertyState<Argument[]>(discoverDevicesMethod);
+                    discoverDevicesMethod.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                    discoverDevicesMethod.InputArguments.BrowseName = BrowseNames.InputArguments;
+                    discoverDevicesMethod.InputArguments.DisplayName = discoverDevicesMethod.InputArguments.BrowseName.Name;
+                    discoverDevicesMethod.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                    discoverDevicesMethod.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                    discoverDevicesMethod.InputArguments.DataType = DataTypeIds.Argument;
+                    discoverDevicesMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
+                    discoverDevicesMethod.InputArguments.Value = new Argument[0]; // No input arguments
+
+                    // Define output arguments for DiscoverDevices (returns device count)
+                    discoverDevicesMethod.OutputArguments = new PropertyState<Argument[]>(discoverDevicesMethod);
+                    discoverDevicesMethod.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                    discoverDevicesMethod.OutputArguments.BrowseName = BrowseNames.OutputArguments;
+                    discoverDevicesMethod.OutputArguments.DisplayName = discoverDevicesMethod.OutputArguments.BrowseName.Name;
+                    discoverDevicesMethod.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                    discoverDevicesMethod.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                    discoverDevicesMethod.OutputArguments.DataType = DataTypeIds.Argument;
+                    discoverDevicesMethod.OutputArguments.ValueRank = ValueRanks.OneDimension;
+
+                    Argument deviceCountArgument = new Argument();
+                    deviceCountArgument.Name = "DeviceCount";
+                    deviceCountArgument.Description = new LocalizedText("Number of devices discovered");
+                    deviceCountArgument.DataType = DataTypeIds.Int32;
+                    deviceCountArgument.ValueRank = ValueRanks.Scalar;
+
+                    discoverDevicesMethod.OutputArguments.Value = new Argument[] { deviceCountArgument };
+
+                    // Create ConnectBySerial method with device serial parameter
+                    MethodState connectBySerialMethod = CreateMethod(_commandsFolder, "ConnectBySerial", "Connect By Serial");
+
+                    // Define input arguments for ConnectBySerial
+                    connectBySerialMethod.InputArguments = new PropertyState<Argument[]>(connectBySerialMethod);
+                    connectBySerialMethod.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                    connectBySerialMethod.InputArguments.BrowseName = BrowseNames.InputArguments;
+                    connectBySerialMethod.InputArguments.DisplayName = connectBySerialMethod.InputArguments.BrowseName.Name;
+                    connectBySerialMethod.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                    connectBySerialMethod.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                    connectBySerialMethod.InputArguments.DataType = DataTypeIds.Argument;
+                    connectBySerialMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
+
+                    Argument deviceSerialArgument = new Argument();
+                    deviceSerialArgument.Name = "DeviceSerial";
+                    deviceSerialArgument.Description = new LocalizedText("Serial number of the device to connect to");
+                    deviceSerialArgument.DataType = DataTypeIds.String;
+                    deviceSerialArgument.ValueRank = ValueRanks.Scalar;
+
+                    connectBySerialMethod.InputArguments.Value = new Argument[] { deviceSerialArgument };
+
+                    // Define output arguments for ConnectBySerial (returns result code)
+                    connectBySerialMethod.OutputArguments = new PropertyState<Argument[]>(connectBySerialMethod);
+                    connectBySerialMethod.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                    connectBySerialMethod.OutputArguments.BrowseName = BrowseNames.OutputArguments;
+                    connectBySerialMethod.OutputArguments.DisplayName = connectBySerialMethod.OutputArguments.BrowseName.Name;
+                    connectBySerialMethod.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                    connectBySerialMethod.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                    connectBySerialMethod.OutputArguments.DataType = DataTypeIds.Argument;
+                    connectBySerialMethod.OutputArguments.ValueRank = ValueRanks.OneDimension;
+
+                    Argument connectResultArgument = new Argument();
+                    connectResultArgument.Name = "Result";
+                    connectResultArgument.Description = new LocalizedText("Result code: 0=success, -1=failure, -2=device not found");
+                    connectResultArgument.DataType = DataTypeIds.Int32;
+                    connectResultArgument.ValueRank = ValueRanks.Scalar;
+
+                    connectBySerialMethod.OutputArguments.Value = new Argument[] { connectResultArgument };
+
+                    // Create Connect method with no parameters (connects to first available device)
                     MethodState connectMethod = CreateMethod(_commandsFolder, "Connect", "Connect");
 
                     // Define empty input arguments for Connect
@@ -390,7 +787,7 @@ namespace TecanOpcUa
                     connectMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
                     connectMethod.InputArguments.Value = new Argument[0]; // No input arguments
 
-                    // Define empty output arguments for Connect
+                    // Define output arguments for Connect (returns result code)
                     connectMethod.OutputArguments = new PropertyState<Argument[]>(connectMethod);
                     connectMethod.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
                     connectMethod.OutputArguments.BrowseName = BrowseNames.OutputArguments;
@@ -399,7 +796,14 @@ namespace TecanOpcUa
                     connectMethod.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
                     connectMethod.OutputArguments.DataType = DataTypeIds.Argument;
                     connectMethod.OutputArguments.ValueRank = ValueRanks.OneDimension;
-                    connectMethod.OutputArguments.Value = new Argument[0]; // No output arguments
+
+                    Argument defaultConnectResultArgument = new Argument();
+                    defaultConnectResultArgument.Name = "Result";
+                    defaultConnectResultArgument.Description = new LocalizedText("Result code: 0=success, -1=failure");
+                    defaultConnectResultArgument.DataType = DataTypeIds.Int32;
+                    defaultConnectResultArgument.ValueRank = ValueRanks.Scalar;
+
+                    connectMethod.OutputArguments.Value = new Argument[] { defaultConnectResultArgument };
 
                     // Create Disconnect method with no parameters
                     MethodState disconnectMethod = CreateMethod(_commandsFolder, "Disconnect", "Disconnect");
@@ -551,6 +955,15 @@ namespace TecanOpcUa
                         _isConnectedVariable.Value = _tecan.IsConnected();
                     }
 
+                    // Get the connected device
+                    var connectedDevice = _tecan.GetConnectedDevice();
+
+                    // Update connected device serial
+                    if (_connectedDeviceSerialVariable != null)
+                    {
+                        _connectedDeviceSerialVariable.Value = connectedDevice != null ? connectedDevice.Serial : string.Empty;
+                    }
+
                     // Only update other variables if the device is connected
                     if (_tecan.IsConnected())
                     {
@@ -565,28 +978,48 @@ namespace TecanOpcUa
                         {
                             _temperatureVariable.Value = _tecan.GetTemperature();
                         }
-                    }
 
-                    // Update serial number
-                    if (_serialNumberVariable != null)
-                    {
-                        _serialNumberVariable.Value = "TECAN-SIM-12345"; // Hardcoded for now
-                    }
+                        // Update device info from the connected device
+                        if (connectedDevice != null)
+                        {
+                            if (_serialNumberVariable != null)
+                            {
+                                _serialNumberVariable.Value = connectedDevice.Serial;
+                            }
 
-                    // Update other device info with placeholder values
-                    if (_productNameVariable != null)
-                    {
-                        _productNameVariable.Value = "Tecan Infinite";
-                    }
+                            if (_productNameVariable != null)
+                            {
+                                _productNameVariable.Value = connectedDevice.Name;
+                            }
 
-                    if (_modelVariable != null)
-                    {
-                        _modelVariable.Value = "M200";
+                            if (_modelVariable != null)
+                            {
+                                _modelVariable.Value = connectedDevice.Type;
+                            }
+                        }
                     }
-
-                    if (_firmwareVersionVariable != null)
+                    else
                     {
-                        _firmwareVersionVariable.Value = "1.0.0";
+                        // Clear device info when not connected
+                        if (_serialNumberVariable != null)
+                        {
+                            _serialNumberVariable.Value = string.Empty;
+                        }
+
+                        if (_productNameVariable != null)
+                        {
+                            _productNameVariable.Value = string.Empty;
+                        }
+
+                        if (_modelVariable != null)
+                        {
+                            _modelVariable.Value = string.Empty;
+                        }
+
+                        if (_firmwareVersionVariable != null)
+                        {
+                            _firmwareVersionVariable.Value = string.Empty;
+                        }
                     }
                 }
             }
@@ -718,8 +1151,22 @@ namespace TecanOpcUa
                 // Handle method calls based on the method name
                 switch (method.BrowseName.Name)
                 {
+                    case "DiscoverDevices":
+                        return OnDiscoverDevices(context, method, inputArguments, outputArguments);
+
+                    case "ConnectBySerial":
+                        return OnConnectBySerial(context, method, inputArguments, outputArguments);
+
                     case "Connect":
-                        return OnConnect(context, method, inputArguments, outputArguments);
+                        // Check if this is a device-specific Connect method
+                        if (method.Parent != null && method.Parent.BrowseName.Name.StartsWith("Device_"))
+                        {
+                            return OnDeviceConnect(context, method, inputArguments, outputArguments);
+                        }
+                        else
+                        {
+                            return OnConnect(context, method, inputArguments, outputArguments);
+                        }
 
                     case "Disconnect":
                         return OnDisconnect(context, method, inputArguments, outputArguments);
@@ -740,6 +1187,112 @@ namespace TecanOpcUa
             catch (Exception ex)
             {
                 Console.WriteLine($"Error in OnCallMethod: {ex.Message}");
+                return new ServiceResult(ex);
+            }
+        }
+
+        // DiscoverDevices method implementation
+        private ServiceResult OnDiscoverDevices(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
+        {
+            try
+            {
+                // Call the Tecan control method
+                int deviceCount = _tecan.DiscoverDevices();
+
+                // Update the device folders in the address space
+                UpdateDeviceFolders();
+
+                // Set the output argument (device count)
+                outputArguments[0] = deviceCount;
+
+                return StatusCodes.Good;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in OnDiscoverDevices: {ex.Message}");
+                return new ServiceResult(ex);
+            }
+        }
+
+        // ConnectBySerial method implementation
+        private ServiceResult OnConnectBySerial(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
+        {
+            try
+            {
+                // Check if we have the right number of input arguments
+                if (inputArguments.Count != 1)
+                {
+                    return StatusCodes.BadArgumentsMissing;
+                }
+
+                // Get the device serial
+                string deviceSerial;
+                try
+                {
+                    deviceSerial = inputArguments[0].ToString();
+                }
+                catch
+                {
+                    return StatusCodes.BadTypeMismatch;
+                }
+
+                // Call the Tecan control method
+                int result = _tecan.ConnectBySerial(deviceSerial);
+
+                // Set the output argument (result code)
+                outputArguments[0] = result;
+
+                if (result == 0)
+                {
+                    return StatusCodes.Good;
+                }
+                else if (result == -2)
+                {
+                    return StatusCodes.BadNodeIdUnknown;
+                }
+                else
+                {
+                    return StatusCodes.BadUnexpectedError;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in OnConnectBySerial: {ex.Message}");
+                return new ServiceResult(ex);
+            }
+        }
+
+        // Device-specific Connect method implementation
+        private ServiceResult OnDeviceConnect(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
+        {
+            try
+            {
+                // Get the device serial from the parent folder name
+                string folderName = method.Parent.BrowseName.Name;
+                string deviceSerial = folderName.Substring("Device_".Length);
+
+                // Call the Tecan control method
+                int result = _tecan.ConnectBySerial(deviceSerial);
+
+                // Set the output argument (result code)
+                outputArguments[0] = result;
+
+                if (result == 0)
+                {
+                    return StatusCodes.Good;
+                }
+                else if (result == -2)
+                {
+                    return StatusCodes.BadNodeIdUnknown;
+                }
+                else
+                {
+                    return StatusCodes.BadUnexpectedError;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in OnDeviceConnect: {ex.Message}");
                 return new ServiceResult(ex);
             }
         }
