@@ -72,6 +72,7 @@ namespace TecanOpcUa
         private string _serialNumber = "";
         private double _temperature = 37.0;
         private MeasurementServer _measurementServer = null;
+        private InstrumentServer _instrumentServer = null;
 
         // List of discovered devices
         private List<TecanDevice> _discoveredDevices = new List<TecanDevice>();
@@ -123,7 +124,7 @@ namespace TecanOpcUa
         }
 
         /// <summary>
-        /// Discovers available Tecan devices using the MeasurementServer methods
+        /// Discovers available Tecan devices using the InstrumentServer methods
         /// </summary>
         /// <returns>Number of devices discovered</returns>
         public int DiscoverDevices()
@@ -158,81 +159,38 @@ namespace TecanOpcUa
                     appSettings.SetVal("Connection", "ShowTecanInstruments", "TRUE");
                     appSettings.SetVal("Connection", "ShowSimulators", "FALSE");
 
-                    Console.WriteLine("Creating MeasurementServer instance...");
-                    // Create measurement server with the configured settings
-                    MeasurementServer measurementServer = new MeasurementServer(appSettings, null);
-                    Console.WriteLine("MeasurementServer created successfully");
-
                     // We'll work with InstrumentOnPort objects
                     List<InstrumentOnPort> instruments = null;
+
+                    // Use InstrumentServer directly to avoid MeasurementServer dependency issues
+                    Console.WriteLine("Using InstrumentServer for device discovery...");
+                    InstrumentServer instrumentServer = new InstrumentServer();
+                    instrumentServer.AppSettings = appSettings;
 
                     // Try multiple approaches to discover instruments
                     try
                     {
-                        // Try with the correct connection string format from Form1.cs
-                        Console.WriteLine("Trying Connect with UserDialog method...");
-                        string connectionString = "porttype=USB|SIM, type=reader, option=default, name=*";
+                        // Try with USB|SIM READER filter
+                        Console.WriteLine("Trying GetInstruments with USB|SIM READER filter...");
+                        string connectionString = "PORTTYPE=USB|SIM, TYPE=READER";
                         Console.WriteLine($"Using connection string: {connectionString}");
+                        instruments = instrumentServer.GetInstruments(connectionString);
+                        Console.WriteLine($"Found {(instruments != null ? instruments.Count : 0)} instruments using GetInstruments with USB|SIM READER filter");
 
-                        // This will show a dialog if there are devices, but we'll handle that in Connect method
-                        // Here we just want to see if devices are discovered
-                        bool connected = false;
-                        try
+                        // If that didn't work, try with a more generic filter
+                        if (instruments == null || instruments.Count == 0)
                         {
-                            // Try to connect but catch any dialog-related exceptions
-                            connected = measurementServer.Connect(InstrumentConnectionMethod.Manually, connectionString);
-                        }
-                        catch (Exception)
-                        {
-                            // Dialog might have been shown, which is fine for discovery
-                        }
-
-                        // Get the connected instruments if any were found
-                        if (connected && measurementServer.ConnectedInstruments != null && measurementServer.ConnectedInstruments.Count > 0)
-                        {
-                            // Convert ConnectedInstruments to our instruments list
-                            instruments = new List<InstrumentOnPort>();
-                            foreach (InstrumentOnPort connectedInstrument in measurementServer.ConnectedInstruments)
-                            {
-                                instruments.Add(connectedInstrument);
-                            }
-                            Console.WriteLine($"Found {instruments.Count} instruments using MeasurementServer.Connect");
-
-                            // Disconnect since we're just discovering
-                            measurementServer.Disconnect();
-                        }
-                        else
-                        {
-                            Console.WriteLine("No instruments found using MeasurementServer.Connect");
+                            Console.WriteLine("Trying GetInstruments with generic filter...");
+                            connectionString = "PORTTYPE=USB|SIM";
+                            Console.WriteLine($"Using connection string: {connectionString}");
+                            instruments = instrumentServer.GetInstruments(connectionString);
+                            Console.WriteLine($"Found {(instruments != null ? instruments.Count : 0)} instruments using GetInstruments with generic filter");
                         }
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Error using MeasurementServer.Connect: {ex.Message}");
+                        Console.WriteLine($"Error using InstrumentServer.GetInstruments: {ex.Message}");
                         Console.WriteLine($"Stack Trace: {ex.StackTrace}");
-                    }
-
-                    // If that failed, try with InstrumentServer as fallback
-                    if (instruments == null || instruments.Count == 0)
-                    {
-                        try
-                        {
-                            Console.WriteLine("Falling back to InstrumentServer...");
-                            InstrumentServer instrumentServer = new InstrumentServer();
-                            instrumentServer.AppSettings = appSettings;
-
-                            // Try with USB|SIM READER filter
-                            Console.WriteLine("Trying GetInstruments with USB|SIM READER filter...");
-                            string connectionString = "PORTTYPE=USB|SIM, TYPE=READER";
-                            Console.WriteLine($"Using connection string: {connectionString}");
-                            instruments = instrumentServer.GetInstruments(connectionString);
-                            Console.WriteLine($"Found {(instruments != null ? instruments.Count : 0)} instruments using GetInstruments with USB|SIM READER filter");
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"Error using InstrumentServer fallback: {ex.Message}");
-                            Console.WriteLine($"Stack Trace: {ex.StackTrace}");
-                        }
                     }
 
                     Console.WriteLine("Instrument discovery attempts completed");
@@ -325,7 +283,7 @@ namespace TecanOpcUa
         }
 
         /// <summary>
-        /// Connect to a Tecan device by serial number
+        /// Connect to a Tecan device by serial number using InstrumentServer
         /// </summary>
         /// <param name="deviceSerial">The serial number of the device to connect to</param>
         /// <returns>0 for success, -1 for failure, -2 for device not found</returns>
@@ -365,29 +323,42 @@ namespace TecanOpcUa
                 appSettings.SetVal("Connection", "ShowTecanInstruments", "TRUE");
                 appSettings.SetVal("Connection", "ShowSimulators", "FALSE");
 
-                // Use the MeasurementServer to connect
-                if (_measurementServer == null)
+                try
                 {
-                    _measurementServer = new MeasurementServer(appSettings, null);
+                    // Use InstrumentServer directly to avoid MeasurementServer dependency issues
+                    Console.WriteLine("Using InstrumentServer for device connection...");
+                    InstrumentServer instrumentServer = new InstrumentServer();
+                    instrumentServer.AppSettings = appSettings;
+
+                    // Use the correct connection string format with the device's serial
+                    string connectionString = $"porttype=USB|SIM, type={device.Type.ToLower()}, option=default, name={device.Name}, serial={device.Serial}";
+                    Console.WriteLine($"Using connection string: {connectionString}");
+
+                    // Connect to the device
+                    List<InstrumentOnPort> connectedInstruments = instrumentServer.Connect(InstrumentConnectionMethod.Manually, connectionString);
+
+                    if (connectedInstruments != null && connectedInstruments.Count > 0)
+                    {
+                        _isConnected = true;
+                        _connectedDevice = device;
+                        _serialNumber = device.Serial;
+
+                        // Store the instrument server reference for later use
+                        _instrumentServer = instrumentServer;
+
+                        Console.WriteLine($"Connected to Tecan device: {device}");
+                        return 0; // Success
+                    }
+
+                    Console.WriteLine($"Failed to connect to Tecan device: {device}");
+                    return -1; // Failed
                 }
-
-                // Use the correct connection string format with the device's serial
-                string connectionString = $"porttype=USB|SIM, type={device.Type.ToLower()}, option=default, name={device.Name}, serial={device.Serial}";
-                Console.WriteLine($"Using connection string: {connectionString}");
-
-                bool connected = _measurementServer.Connect(InstrumentConnectionMethod.Manually, connectionString);
-
-                if (connected)
+                catch (Exception ex)
                 {
-                    _isConnected = true;
-                    _connectedDevice = device;
-                    _serialNumber = device.Serial;
-                    Console.WriteLine($"Connected to Tecan device: {device}");
-                    return 0; // Success
+                    Console.WriteLine($"Error using InstrumentServer to connect: {ex.Message}");
+                    Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+                    return -1; // Error
                 }
-
-                Console.WriteLine($"Failed to connect to Tecan device: {device}");
-                return -1; // Failed
             }
             catch (Exception ex)
             {
@@ -437,37 +408,95 @@ namespace TecanOpcUa
                 appSettings.SetVal("Connection", "ShowTecanInstruments", "TRUE");
                 appSettings.SetVal("Connection", "ShowSimulators", "FALSE");
 
-                // Use the MeasurementServer to connect
-                if (_measurementServer == null)
+                try
                 {
-                    _measurementServer = new MeasurementServer(appSettings, null);
-                }
+                    // Use InstrumentServer directly to avoid MeasurementServer dependency issues
+                    Console.WriteLine("Using InstrumentServer for device connection...");
+                    InstrumentServer instrumentServer = new InstrumentServer();
+                    instrumentServer.AppSettings = appSettings;
 
-                // Use the correct connection string format from Form1.cs
-                bool connected = _measurementServer.Connect(InstrumentConnectionMethod.UserDialog, "porttype=USB|SIM, type=reader, option=default, name=*");
+                    // Use the correct connection string format
+                    string connectionString = "porttype=USB|SIM, type=reader, option=default, name=*";
+                    Console.WriteLine($"Using connection string: {connectionString}");
 
-                if (connected)
-                {
-                    _isConnected = true;
-                    _serialNumber = _measurementServer.ConnectedReader.Information.GetInstrumentSerial();
+                    // Connect to the device with UserDialog method
+                    List<InstrumentOnPort> connectedInstruments = instrumentServer.Connect(InstrumentConnectionMethod.UserDialog, connectionString);
 
-                    // Create a device object for the connected device
-                    _connectedDevice = new TecanDevice
+                    if (connectedInstruments != null && connectedInstruments.Count > 0)
                     {
-                        Name = _measurementServer.ConnectedReader.Information.GetProductName(),
-                        Type = "READER",
-                        Serial = _serialNumber,
-                        Port = "USB/USB0",
-                        Driver = "Unknown",
-                        ConnectionString = "porttype=USB, type=reader, option=default, name=*"
-                    };
+                        _isConnected = true;
 
-                    Console.WriteLine($"Connected to Tecan device: {_serialNumber}");
-                    return 0; // Success
+                        // Get the first instrument
+                        InstrumentOnPort instrument = connectedInstruments[0];
+                        DeviceOnPort device = instrument.Device;
+
+                        _serialNumber = device.m_sInstrumentSerial;
+
+                        // Create a device object for the connected device
+                        _connectedDevice = new TecanDevice
+                        {
+                            Name = instrument.Instrument.InstrumentName,
+                            Type = device.m_sInstrumentType,
+                            Serial = _serialNumber,
+                            Port = $"{device.m_sPortType}/{device.m_sPort}",
+                            Driver = device.m_sDriver,
+                            ConnectionString = connectionString
+                        };
+
+                        // Store the instrument server reference for later use
+                        _instrumentServer = instrumentServer;
+
+                        Console.WriteLine($"Connected to Tecan device: {_serialNumber}");
+                        return 0; // Success
+                    }
+
+                    Console.WriteLine("Failed to connect to Tecan device");
+                    return -1; // Failed
                 }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error using InstrumentServer to connect: {ex.Message}");
+                    Console.WriteLine($"Stack Trace: {ex.StackTrace}");
 
-                Console.WriteLine("Failed to connect to Tecan device");
-                return -1; // Failed
+                    // Fall back to MeasurementServer if InstrumentServer fails
+                    Console.WriteLine("Falling back to MeasurementServer...");
+                    try
+                    {
+                        if (_measurementServer == null)
+                        {
+                            _measurementServer = new MeasurementServer(appSettings, null);
+                        }
+
+                        // Use the correct connection string format from Form1.cs
+                        bool connected = _measurementServer.Connect(InstrumentConnectionMethod.UserDialog, "porttype=USB|SIM, type=reader, option=default, name=*");
+
+                        if (connected)
+                        {
+                            _isConnected = true;
+                            _serialNumber = _measurementServer.ConnectedReader.Information.GetInstrumentSerial();
+
+                            // Create a device object for the connected device
+                            _connectedDevice = new TecanDevice
+                            {
+                                Name = _measurementServer.ConnectedReader.Information.GetProductName(),
+                                Type = "READER",
+                                Serial = _serialNumber,
+                                Port = "USB/USB0",
+                                Driver = "Unknown",
+                                ConnectionString = "porttype=USB, type=reader, option=default, name=*"
+                            };
+
+                            Console.WriteLine($"Connected to Tecan device using MeasurementServer: {_serialNumber}");
+                            return 0; // Success
+                        }
+                    }
+                    catch (Exception innerEx)
+                    {
+                        Console.WriteLine($"Error using MeasurementServer fallback: {innerEx.Message}");
+                    }
+
+                    return -1; // Error
+                }
             }
             catch (Exception ex)
             {
@@ -488,7 +517,13 @@ namespace TecanOpcUa
 
                 Console.WriteLine("Disconnecting from Tecan device...");
 
-                // Use the MeasurementServer to disconnect
+                // Disconnect from the appropriate server
+                if (_instrumentServer != null)
+                {
+                    _instrumentServer.Disconnect();
+                    _instrumentServer = null;
+                }
+
                 if (_measurementServer != null)
                 {
                     _measurementServer.Disconnect();
