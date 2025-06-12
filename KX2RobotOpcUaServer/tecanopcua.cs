@@ -105,86 +105,93 @@ namespace TecanOpcUa
                     InstrumentServer instrumentServer = new InstrumentServer();
                     Console.WriteLine("InstrumentServer created successfully");
 
-                    List<DeviceOnPort> devices = null;
+                    // We'll work with InstrumentOnPort objects directly instead of DeviceOnPort
+                    List<InstrumentOnPort> instruments = null;
 
-                    // Try multiple approaches to discover devices
+                    // Try multiple approaches to discover instruments
                     try
                     {
-                        // Approach 1: Try using GetInstruments method with a filter string
-                        Console.WriteLine("Trying GetInstruments method with filter...");
-                        string connectionString = "PORTTYPE=USB, TYPE=READER";
-                        Console.WriteLine($"Using connection string: {connectionString}");
-
-                        // GetInstruments returns InstrumentOnPort objects, which we'll convert to DeviceOnPort
-                        List<InstrumentOnPort> instruments = instrumentServer.GetInstruments(connectionString);
-
-                        if (instruments != null && instruments.Count > 0)
-                        {
-                            Console.WriteLine($"Found {instruments.Count} instruments using GetInstruments");
-                            devices = new List<DeviceOnPort>();
-
-                            foreach (var instrument in instruments)
-                            {
-                                devices.Add(instrument.Device);
-                            }
-                        }
-                        else
-                        {
-                            Console.WriteLine("No instruments found using GetInstruments");
-                        }
+                        // Approach 1: Try using the Instruments property (which calls GetInstruments(""))
+                        Console.WriteLine("Trying Instruments property...");
+                        instruments = instrumentServer.Instruments;
+                        Console.WriteLine($"Found {(instruments != null ? instruments.Count : 0)} instruments using Instruments property");
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Error using GetInstruments: {ex.Message}");
+                        Console.WriteLine($"Error using Instruments property: {ex.Message}");
                         Console.WriteLine($"Stack Trace: {ex.StackTrace}");
                     }
 
-                    // If GetInstruments failed, try DetectDevices with null parameters
-                    if (devices == null || devices.Count == 0)
+                    // If that failed, try GetInstruments with specific filter strings
+                    if (instruments == null || instruments.Count == 0)
                     {
                         try
                         {
-                            Console.WriteLine("Trying DetectDevices with null parameters...");
-                            devices = instrumentServer.DetectDevices(null, null);
-                            Console.WriteLine($"Found {(devices != null ? devices.Count : 0)} devices using DetectDevices(null, null)");
+                            // Try with USB READER filter
+                            Console.WriteLine("Trying GetInstruments with USB READER filter...");
+                            string connectionString = "PORTTYPE=USB, TYPE=READER";
+                            Console.WriteLine($"Using connection string: {connectionString}");
+                            instruments = instrumentServer.GetInstruments(connectionString);
+                            Console.WriteLine($"Found {(instruments != null ? instruments.Count : 0)} instruments using GetInstruments with USB READER filter");
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"Error using DetectDevices(null, null): {ex.Message}");
+                            Console.WriteLine($"Error using GetInstruments with USB READER filter: {ex.Message}");
                             Console.WriteLine($"Stack Trace: {ex.StackTrace}");
                         }
                     }
 
-                    // If that failed too, try with just USB filter
-                    if (devices == null || devices.Count == 0)
+                    // If that failed, try with just USB filter
+                    if (instruments == null || instruments.Count == 0)
                     {
                         try
                         {
-                            Console.WriteLine("Trying DetectDevices with USB filter only...");
-                            devices = instrumentServer.DetectDevices("USB", null);
-                            Console.WriteLine($"Found {(devices != null ? devices.Count : 0)} devices using DetectDevices(\"USB\", null)");
+                            Console.WriteLine("Trying GetInstruments with USB filter only...");
+                            string connectionString = "PORTTYPE=USB";
+                            Console.WriteLine($"Using connection string: {connectionString}");
+                            instruments = instrumentServer.GetInstruments(connectionString);
+                            Console.WriteLine($"Found {(instruments != null ? instruments.Count : 0)} instruments using GetInstruments with USB filter");
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"Error using DetectDevices(\"USB\", null): {ex.Message}");
+                            Console.WriteLine($"Error using GetInstruments with USB filter: {ex.Message}");
                             Console.WriteLine($"Stack Trace: {ex.StackTrace}");
                         }
                     }
 
-                    Console.WriteLine("Device discovery attempts completed");
-
-                    if (devices != null && devices.Count > 0)
+                    // If that failed, try with empty filter (should be same as Instruments property)
+                    if (instruments == null || instruments.Count == 0)
                     {
-                        Console.WriteLine($"Found {devices.Count} Tecan devices");
-
-                        // Convert to our TecanDevice format
-                        foreach (DeviceOnPort device in devices)
+                        try
                         {
-                            Console.WriteLine($"Processing device: {device.m_sInstrumentName} ({device.m_sInstrumentType}) - {device.m_sInstrumentSerial}");
+                            Console.WriteLine("Trying GetInstruments with empty filter...");
+                            instruments = instrumentServer.GetInstruments("");
+                            Console.WriteLine($"Found {(instruments != null ? instruments.Count : 0)} instruments using GetInstruments with empty filter");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error using GetInstruments with empty filter: {ex.Message}");
+                            Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+                        }
+                    }
+
+                    Console.WriteLine("Instrument discovery attempts completed");
+
+                    if (instruments != null && instruments.Count > 0)
+                    {
+                        Console.WriteLine($"Found {instruments.Count} Tecan instruments");
+
+                        // Convert InstrumentOnPort objects to our TecanDevice format
+                        foreach (InstrumentOnPort instrument in instruments)
+                        {
+                            // Get the device information from the instrument
+                            DeviceOnPort device = instrument.Device;
+
+                            Console.WriteLine($"Processing instrument: {instrument.Instrument.InstrumentName} - {device.m_sInstrumentSerial}");
 
                             var tecanDevice = new TecanDevice
                             {
-                                Name = device.m_sInstrumentName,
+                                Name = instrument.Instrument.InstrumentName,
                                 Type = device.m_sInstrumentType,
                                 Serial = device.m_sInstrumentSerial,
                                 Port = $"{device.m_sPortType}/{device.m_sPort}",
@@ -198,7 +205,7 @@ namespace TecanOpcUa
                     }
                     else
                     {
-                        Console.WriteLine("No Tecan devices found (devices list is null or empty)");
+                        Console.WriteLine("No Tecan instruments found (instruments list is null or empty)");
                     }
                 }
                 catch (ArgumentNullException anex)
