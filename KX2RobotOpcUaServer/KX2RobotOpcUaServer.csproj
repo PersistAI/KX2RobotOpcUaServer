@@ -103,15 +103,287 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
+    <Reference Include="Tecan.At.Common">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Common.DocumentManagement">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Common.DocumentManagement.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Common.DocumentManagement.Reader">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Common.DocumentManagement.Reader.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Common.MCS">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Common.MCS.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Common.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Common.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Common.Results">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Common.Results.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Common.Results.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Common.Results.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Common.Script">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Common.Script.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Common.UI">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Common.UI.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Common.UI.Resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Common.UI.Resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Communication.Common">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Communication.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Communication.Common.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Communication.Common.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Communication.Port.IP">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Communication.Port.IP.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Communication.Port.PIPE">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Communication.Port.PIPE.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Communication.Port.RS232">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Communication.Port.RS232.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Communication.Port.SIM.Common">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Communication.Port.SIM.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Communication.Port.SIM.Common.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Communication.Port.SIM.Common.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Communication.Port.USB">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Communication.Port.USB.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Communication.Server">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Communication.Server.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Communication.SIM.AMR">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Communication.SIM.AMR.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Communication.SIM.AMR.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Communication.SIM.AMR.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Communication.SIM.AMRPlus">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Communication.SIM.AMRPlus.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Communication.SIM.AMRPlus.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Communication.SIM.AMRPlus.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Communication.SIM.Connect">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Communication.SIM.Connect.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Communication.SIM.GeniosUltra">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Communication.SIM.GeniosUltra.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Communication.SIM.GeniosUltra.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Communication.SIM.GeniosUltra.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Communication.SIM.Safire3">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Communication.SIM.Safire3.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Communication.SIM.Safire3.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Communication.SIM.Safire3.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Communication.SIM.Safire3Pro">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Communication.SIM.Safire3Pro.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Communication.SIM.Safire3Pro.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Communication.SIM.Safire3Pro.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Communication.SIM.SunriseMini">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Communication.SIM.SunriseMini.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Communication.SIM.SunriseMini.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Communication.SIM.SunriseMini.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Instrument.Common">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Instrument.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Instrument.Common.GCM">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Instrument.Common.GCM.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Instrument.Common.Reader">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Instrument.Common.Reader.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Instrument.Common.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Instrument.Common.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Instrument.Common.Stacker">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Instrument.Common.Stacker.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Instrument.Gas.GCM">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Instrument.Gas.GCM.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Instrument.GCM.Server">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Instrument.GCM.Server.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Instrument.Reader.AMR">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Instrument.Reader.AMR.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Instrument.Reader.AMR.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Instrument.Reader.AMR.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Instrument.Reader.AMRPlus">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Instrument.Reader.AMRPlus.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Instrument.Reader.AMRPlus.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Instrument.Reader.AMRPlus.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Instrument.Reader.GeniosUltra">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Instrument.Reader.GeniosUltra.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Instrument.Reader.GeniosUltra.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Instrument.Reader.GeniosUltra.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Instrument.Reader.Safire3">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Instrument.Reader.Safire3.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Instrument.Reader.Safire3.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Instrument.Reader.Safire3.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Instrument.Reader.Safire3Pro">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Instrument.Reader.Safire3Pro.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Instrument.Reader.Safire3Pro.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Instrument.Reader.Safire3Pro.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Instrument.Reader.SunriseMini">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Instrument.Reader.SunriseMini.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Instrument.Reader.SunriseMini.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Instrument.Reader.SunriseMini.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Instrument.Server">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Instrument.Server.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Instrument.Server.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Instrument.Server.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Instrument.Stacker.Connect">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Instrument.Stacker.Connect.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Instrument.Stacker.Connect.Resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Instrument.Stacker.Connect.Resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Instrument.Stacker.Server">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Instrument.Stacker.Server.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Instrument.Stacker.Server.Resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Instrument.Stacker.Server.Resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Measurement.BuiltInTest.AMR">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Measurement.BuiltInTest.AMR.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Measurement.BuiltInTest.AMR.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Measurement.BuiltInTest.AMR.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Measurement.BuiltInTest.Common">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Measurement.BuiltInTest.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Measurement.Common">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Measurement.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Measurement.Common.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Measurement.Common.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Measurement.Server">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Measurement.Server.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.Measurement.Server.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.Measurement.Server.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.Connect.Reader">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.Connect.Reader.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.Connect.Reader.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.Connect.Reader.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.Core">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.Core.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.Core.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.Device">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.Device.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.Device.AMR">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.Device.AMR.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.Device.AMR.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.Device.AMR.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.Device.AMRPlus">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.Device.AMRPlus.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.Device.AMRPlus.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.Device.AMRPlus.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.Device.GeniosUltra">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.Device.GeniosUltra.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.Device.GeniosUltra.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.Device.GeniosUltra.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.Device.Reader">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.Device.Reader.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.Device.Reader.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.Device.Reader.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.Device.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.Device.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.Device.Safire3">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.Device.Safire3.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.Device.Safire3.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.Device.Safire3.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.Device.Safire3Pro">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.Device.Safire3Pro.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.Device.Safire3Pro.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.Device.Safire3Pro.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.Device.SunriseMini">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.Device.SunriseMini.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.Device.SunriseMini.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.Device.SunriseMini.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.ExcelOutput">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.ExcelOutput.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.ExcelOutput.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.ExcelOutput.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.NanoQuant">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.NanoQuant.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.NanoQuant.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.NanoQuant.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.ReaderEditor">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.ReaderEditor.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.ReaderEditor.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.ReaderEditor.resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Tecan.At.XFluor.resources">
+      <HintPath>..\..\..\..\OneDrive\Desktop\Tecan\bin\Tecan.At.XFluor.resources.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="KX2RobotNodeManagerFactory.cs" />
     <Compile Include="KX2RobotOpcUaServer.cs" />
     <Compile Include="OpcUaServer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="TecanControl.cs" />
-    <Compile Include="TecanNodeManager.cs" />
     <Compile Include="TecanNodeManagerFactory.cs" />
+    <Compile Include="tecanopcua.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

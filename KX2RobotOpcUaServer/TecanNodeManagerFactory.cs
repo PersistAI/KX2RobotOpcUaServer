@@ -55,11 +55,8 @@ namespace TecanOpcUa
             {
                 // Initialize the Tecan
                 Console.WriteLine("Initializing Tecan...");
-                int result = _tecan.Initialize();
-                if (result == 0)
-                    Console.WriteLine("Tecan initialized successfully.");
-                else
-                    Console.WriteLine($"Failed to initialize Tecan: Error {result}");
+                // We don't automatically connect here - the user will call Connect() explicitly
+                Console.WriteLine("Tecan ready for connection.");
             }
             catch (Exception ex)
             {
@@ -74,8 +71,11 @@ namespace TecanOpcUa
             {
                 // Shutdown the Tecan
                 Console.WriteLine("Shutting down Tecan...");
-                _tecan.ShutDown();
-                Console.WriteLine("Tecan shut down successfully.");
+                if (_tecan != null)
+                {
+                    _tecan.Disconnect();
+                    Console.WriteLine("Tecan shut down successfully.");
+                }
             }
             catch (Exception ex)
             {
