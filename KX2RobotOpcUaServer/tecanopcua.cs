@@ -1885,6 +1885,7 @@ namespace TecanOpcUa
                 if (_deviceCountVariable != null)
                 {
                     _deviceCountVariable.Value = devices.Count;
+                    _deviceCountVariable.ClearChangeMasks(SystemContext, false);
                 }
 
                 // Clear existing device folders
@@ -1894,52 +1895,76 @@ namespace TecanOpcUa
                 }
                 _deviceFolders.Clear();
 
+                Console.WriteLine($"Creating folders for {devices.Count} discovered devices");
+
                 // Create a folder for each device
                 foreach (var device in devices)
                 {
-                    // Create a folder for the device
-                    FolderState deviceFolder = CreateFolder(_discoveredDevicesFolder, $"Device_{device.Serial}", device.Name);
-                    _deviceFolders.Add(deviceFolder);
+                    try
+                    {
+                        // Create a folder for the device with a clear name
+                        string folderName = $"Device_{device.Serial}";
+                        string displayName = device.Name;
 
-                    // Add variables for device properties
-                    CreateVariable(deviceFolder, "Name", "Name", DataTypeIds.String, ValueRanks.Scalar).Value = device.Name;
-                    CreateVariable(deviceFolder, "Type", "Type", DataTypeIds.String, ValueRanks.Scalar).Value = device.Type;
-                    CreateVariable(deviceFolder, "Serial", "Serial", DataTypeIds.String, ValueRanks.Scalar).Value = device.Serial;
-                    CreateVariable(deviceFolder, "Port", "Port", DataTypeIds.String, ValueRanks.Scalar).Value = device.Port;
-                    CreateVariable(deviceFolder, "Driver", "Driver", DataTypeIds.String, ValueRanks.Scalar).Value = device.Driver;
+                        Console.WriteLine($"Creating device folder: {folderName} ({displayName})");
 
-                    // Add a method to connect to this device
-                    MethodState connectMethod = CreateMethod(deviceFolder, "Connect", "Connect");
+                        FolderState deviceFolder = CreateFolder(_discoveredDevicesFolder, folderName, displayName);
+                        _deviceFolders.Add(deviceFolder);
 
-                    // Define empty input arguments for Connect
-                    connectMethod.InputArguments = new PropertyState<Argument[]>(connectMethod);
-                    connectMethod.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    connectMethod.InputArguments.BrowseName = BrowseNames.InputArguments;
-                    connectMethod.InputArguments.DisplayName = connectMethod.InputArguments.BrowseName.Name;
-                    connectMethod.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    connectMethod.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    connectMethod.InputArguments.DataType = DataTypeIds.Argument;
-                    connectMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
-                    connectMethod.InputArguments.Value = new Argument[0]; // No input arguments
+                        // Add only Name and Serial variables
+                        BaseDataVariableState nameVar = CreateVariable(deviceFolder, "Name", "Name", DataTypeIds.String, ValueRanks.Scalar);
+                        nameVar.Value = device.Name;
+                        nameVar.ClearChangeMasks(SystemContext, false);
 
-                    // Define output arguments for Connect (returns result code)
-                    connectMethod.OutputArguments = new PropertyState<Argument[]>(connectMethod);
-                    connectMethod.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    connectMethod.OutputArguments.BrowseName = BrowseNames.OutputArguments;
-                    connectMethod.OutputArguments.DisplayName = connectMethod.OutputArguments.BrowseName.Name;
-                    connectMethod.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    connectMethod.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    connectMethod.OutputArguments.DataType = DataTypeIds.Argument;
-                    connectMethod.OutputArguments.ValueRank = ValueRanks.OneDimension;
+                        BaseDataVariableState serialVar = CreateVariable(deviceFolder, "Serial", "Serial", DataTypeIds.String, ValueRanks.Scalar);
+                        serialVar.Value = device.Serial;
+                        serialVar.ClearChangeMasks(SystemContext, false);
 
-                    Argument resultArgument = new Argument();
-                    resultArgument.Name = "Result";
-                    resultArgument.Description = new LocalizedText("Result code: 0=success, -1=failure");
-                    resultArgument.DataType = DataTypeIds.Int32;
-                    resultArgument.ValueRank = ValueRanks.Scalar;
+                        // Add a method to connect to this device
+                        MethodState connectMethod = CreateMethod(deviceFolder, "Connect", "Connect");
 
-                    connectMethod.OutputArguments.Value = new Argument[] { resultArgument };
+                        // Define empty input arguments for Connect
+                        connectMethod.InputArguments = new PropertyState<Argument[]>(connectMethod);
+                        connectMethod.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                        connectMethod.InputArguments.BrowseName = BrowseNames.InputArguments;
+                        connectMethod.InputArguments.DisplayName = connectMethod.InputArguments.BrowseName.Name;
+                        connectMethod.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                        connectMethod.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                        connectMethod.InputArguments.DataType = DataTypeIds.Argument;
+                        connectMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
+                        connectMethod.InputArguments.Value = new Argument[0]; // No input arguments
+
+                        // Define output arguments for Connect (returns result code)
+                        connectMethod.OutputArguments = new PropertyState<Argument[]>(connectMethod);
+                        connectMethod.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                        connectMethod.OutputArguments.BrowseName = BrowseNames.OutputArguments;
+                        connectMethod.OutputArguments.DisplayName = connectMethod.OutputArguments.BrowseName.Name;
+                        connectMethod.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                        connectMethod.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                        connectMethod.OutputArguments.DataType = DataTypeIds.Argument;
+                        connectMethod.OutputArguments.ValueRank = ValueRanks.OneDimension;
+
+                        Argument resultArgument = new Argument();
+                        resultArgument.Name = "Result";
+                        resultArgument.Description = new LocalizedText("Result code: 0=success, -1=failure");
+                        resultArgument.DataType = DataTypeIds.Int32;
+                        resultArgument.ValueRank = ValueRanks.Scalar;
+
+                        connectMethod.OutputArguments.Value = new Argument[] { resultArgument };
+
+                        // Make sure the folder and its children are properly registered with the address space
+                        AddPredefinedNode(SystemContext, deviceFolder);
+
+                        Console.WriteLine($"Successfully created device folder for {device.Name} ({device.Serial})");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error creating device folder for {device.Name}: {ex.Message}");
+                    }
                 }
+
+                // Make sure the discovered devices folder is updated in the address space
+                _discoveredDevicesFolder.ClearChangeMasks(SystemContext, false);
             }
             catch (Exception ex)
             {
