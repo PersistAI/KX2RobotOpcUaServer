@@ -11,6 +11,8 @@ using Tecan.At.Measurement;
 using System.Linq;
 using System.Diagnostics;
 using System.IO;
+using System.Xml;
+using System.Text;
 using Tecan.At.Communication.Port;
 using Tecan.At.Instrument;
 using Tecan.At.Common;
@@ -19,6 +21,9 @@ using Tecan.At.Common.DocumentManagement.Reader;
 using Tecan.At.XFluor.Device;
 using Tecan.At.Measurement.Grid;
 using System.Globalization;
+using Tecan.At.XFluor.Connect;
+using Tecan.At.XFluor.Core;
+using Tecan.At.XFluor.ExcelOutput;
 using Tecan.At.Instrument.Common.Reader;
 
 
@@ -445,7 +450,10 @@ namespace TecanOpcUa
     {
         private TecanControl _tecan;
         private string _outputFolder;
+        private string _debugFolder;
         private List<MeasurementResult> _measurementResults = new List<MeasurementResult>();
+        private ResultOutput _resultOutput = null;
+        private Guid _currentMeasurementGuid;
 
         /// <summary>
         /// Constructor
@@ -464,6 +472,17 @@ namespace TecanOpcUa
             if (!Directory.Exists(_outputFolder))
             {
                 Directory.CreateDirectory(_outputFolder);
+            }
+
+            // Create debug folder
+            _debugFolder = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                "TecanOpcUa",
+                "Debug");
+
+            if (!Directory.Exists(_debugFolder))
+            {
+                Directory.CreateDirectory(_debugFolder);
             }
         }
 
@@ -532,20 +551,26 @@ namespace TecanOpcUa
                         _tecan.MovePlateIn();
 
                         // Create a GUID for this measurement run
-                        Guid measurementGuid = Guid.NewGuid();
+                        _currentMeasurementGuid = Guid.NewGuid();
 
                         // Set script to measurement server
                         _tecan._measurementServer.ActionsAsObjects = measurementScript;
+
+                        // Setup the output mechanism (critical for measurement execution)
+                        SetupOutput(_tecan._measurementServer, measurementScript);
 
                         // Configure in-process messaging (critical for measurement execution)
                         _tecan._measurementServer.UseInprocMessagingService = true;
 
                         // Start the measurement
-                        _tecan._measurementServer.NewRunState(measurementGuid);
-                        _tecan._measurementServer.Run(measurementGuid);
+                        _tecan._measurementServer.NewRunState(_currentMeasurementGuid);
+                        _tecan._measurementServer.Run(_currentMeasurementGuid);
 
-                        // Wait for measurement to complete (simplified)
-                        Thread.Sleep(5000);
+                        // Wait for measurement to complete with proper message processing
+                        Wait(10000);  // 10 second timeout
+
+                        // Stop the output mechanism
+                        StopOutput();
 
                         // Generate a result file path
                         string resultFilePath = Path.Combine(
@@ -654,20 +679,26 @@ namespace TecanOpcUa
                         _tecan.MovePlateIn();
 
                         // Create a GUID for this measurement run
-                        Guid measurementGuid = Guid.NewGuid();
+                        _currentMeasurementGuid = Guid.NewGuid();
 
                         // Set script to measurement server
                         _tecan._measurementServer.ActionsAsObjects = measurementScript;
+
+                        // Setup the output mechanism (critical for measurement execution)
+                        SetupOutput(_tecan._measurementServer, measurementScript);
 
                         // Configure in-process messaging (critical for measurement execution)
                         _tecan._measurementServer.UseInprocMessagingService = true;
 
                         // Start the measurement
-                        _tecan._measurementServer.NewRunState(measurementGuid);
-                        _tecan._measurementServer.Run(measurementGuid);
+                        _tecan._measurementServer.NewRunState(_currentMeasurementGuid);
+                        _tecan._measurementServer.Run(_currentMeasurementGuid);
 
-                        // Wait for measurement to complete (simplified)
-                        Thread.Sleep(5000);
+                        // Wait for measurement to complete with proper message processing
+                        Wait(10000);  // 10 second timeout
+
+                        // Stop the output mechanism
+                        StopOutput();
 
                         // Generate a result file path
                         string resultFilePath = Path.Combine(
@@ -759,20 +790,26 @@ namespace TecanOpcUa
                         _tecan.MovePlateIn();
 
                         // Create a GUID for this measurement run
-                        Guid measurementGuid = Guid.NewGuid();
+                        _currentMeasurementGuid = Guid.NewGuid();
 
                         // Set script to measurement server
                         _tecan._measurementServer.ActionsAsObjects = measurementScript;
+
+                        // Setup the output mechanism (critical for measurement execution)
+                        SetupOutput(_tecan._measurementServer, measurementScript);
 
                         // Configure in-process messaging (critical for measurement execution)
                         _tecan._measurementServer.UseInprocMessagingService = true;
 
                         // Start the measurement
-                        _tecan._measurementServer.NewRunState(measurementGuid);
-                        _tecan._measurementServer.Run(measurementGuid);
+                        _tecan._measurementServer.NewRunState(_currentMeasurementGuid);
+                        _tecan._measurementServer.Run(_currentMeasurementGuid);
 
-                        // Wait for measurement to complete (simplified)
-                        Thread.Sleep(5000);
+                        // Wait for measurement to complete with proper message processing
+                        Wait(10000);  // 10 second timeout
+
+                        // Stop the output mechanism
+                        StopOutput();
 
                         // Generate a result file path
                         string resultFilePath = Path.Combine(
@@ -1259,6 +1296,196 @@ namespace TecanOpcUa
             oWell.ID = nID;
 
             return oWell;
+        }
+
+        /// <summary>
+        /// Sets up the output mechanism for measurement
+        /// </summary>
+        private void SetupOutput(MeasurementServer server, TecanFile tecanFile)
+        {
+            try
+            {
+                Console.WriteLine("Setting up output mechanism for measurement...");
+
+                // Create a new ResultOutput object
+                _resultOutput = new ResultOutput(tecanFile, new Dictionary<string, string>(), null, _currentMeasurementGuid);
+
+                // Set device name
+                _resultOutput.DeviceName = server.ConnectedReader.Information.GetProductName();
+
+                // Set simulation mode
+                _resultOutput.Simulation = false;
+
+                // Add exception listener
+                _resultOutput.AddExceptionListener(new Tecan.At.Common.ExceptionListener(OutputExceptionListener));
+
+                // Create XML output
+                string xmlFilePath = Path.Combine(
+                    _outputFolder,
+                    $"Measurement_{DateTime.Now:yyyyMMdd_HHmmss}.xml");
+
+                XmlOutput xmlOutput = new XmlOutput(xmlFilePath);
+                _resultOutput.MeasurementDataOutput = xmlOutput;
+
+                // Initialize the output
+                bool outputInitialized = _resultOutput.Init();
+                if (!outputInitialized)
+                {
+                    throw new InvalidOperationException("Failed to initialize output mechanism");
+                }
+
+                // Start listening for measurement data
+                _resultOutput.StartListening(server.MessagingService);
+
+                Console.WriteLine("Output mechanism setup completed successfully");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error setting up output: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Stops the output mechanism
+        /// </summary>
+        private void StopOutput()
+        {
+            try
+            {
+                if (_resultOutput != null)
+                {
+                    Console.WriteLine("Stopping output mechanism...");
+
+                    // Stop listening for measurement data
+                    _resultOutput.StopListening(false);
+
+                    // Remove exception listeners
+                    _resultOutput.RemoveAllExceptionListeners();
+
+                    Console.WriteLine("Output mechanism stopped successfully");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error stopping output: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            }
+        }
+
+        /// <summary>
+        /// Exception listener for output errors
+        /// </summary>
+        private void OutputExceptionListener(object sender, Exception e)
+        {
+            Console.WriteLine($"Output error: {e.Message}");
+            Console.WriteLine($"Stack trace: {e.StackTrace}");
+        }
+
+        /// <summary>
+        /// Waits for the specified timeout while processing messages
+        /// This is an exact replication of the Wait method from Form1.cs but adapted for server-side use
+        /// </summary>
+        /// <param name="timeoutMillis">The timeout in milliseconds</param>
+        private void Wait(int timeoutMillis)
+        {
+            Console.WriteLine($"Waiting for measurement to complete (timeout: {timeoutMillis}ms)...");
+
+            // Create a TimeSpan for the timeout - exactly as in Form1.cs
+            TimeSpan timeSpan = new TimeSpan(0, 0, 0, 0, timeoutMillis);
+            DateTime startTime = DateTime.Now;
+
+            // Setup progress monitoring if available - this is additional to Form1.cs
+            // but necessary for server-side operation
+            if (_resultOutput != null)
+            {
+                // Add progress monitoring delegate
+                _resultOutput.UpdateDataDelegate = new QueueProcessor.UpdateData(MeasurementProgress);
+            }
+
+            // Wait loop - exactly as in Form1.cs
+            while (true)
+            {
+                // Check if we've exceeded the timeout - exactly as in Form1.cs
+                DateTime currentTime = DateTime.Now;
+                if (((currentTime - startTime) > timeSpan) && timeoutMillis > 0)
+                {
+                    Console.WriteLine("Wait timeout reached");
+                    break;
+                }
+
+                // Process any pending messages - equivalent to Application.DoEvents() in Form1.cs
+                // but adapted for server-side use since we can't use Application.DoEvents()
+                Thread.Sleep(10);
+            }
+
+            // Remove progress monitoring - additional to Form1.cs but necessary for cleanup
+            if (_resultOutput != null)
+            {
+                _resultOutput.UpdateDataDelegate = null;
+            }
+
+            Console.WriteLine("Wait completed");
+        }
+
+        // Track the last time we saw progress
+        private DateTime _lastProgressTime = DateTime.MinValue;
+
+        /// <summary>
+        /// Callback for measurement progress updates
+        /// </summary>
+        /// <param name="args">Progress arguments</param>
+        private void MeasurementProgress(Tecan.At.Common.Results.ProgressArguments args)
+        {
+            try
+            {
+                // Update the last progress time
+                _lastProgressTime = DateTime.Now;
+
+                // Log progress information
+                if (args != null)
+                {
+                    // Log action tag if available
+                    if (!string.IsNullOrEmpty(args.ActionTag))
+                    {
+                        Console.WriteLine($"Measurement action: {args.ActionTag}");
+                    }
+
+                    // Log label if available
+                    if (!string.IsNullOrEmpty(args.Label))
+                    {
+                        Console.WriteLine($"Measurement label: {args.Label}");
+                    }
+
+                    // Calculate and log progress percentage if cycle information is available
+                    if (args.NrOfCycles > 0)
+                    {
+                        int progressPercentage = (int)((args.CurrentCycle / (double)args.NrOfCycles) * 100);
+                        Console.WriteLine($"Progress: {progressPercentage}% (Cycle {args.CurrentCycle} of {args.NrOfCycles})");
+                    }
+
+                    // Log well position if available
+                    if (args.Row > 0 && args.Column > 0)
+                    {
+                        char rowChar = (char)('A' + args.Row - 1);
+                        Console.WriteLine($"Current well: {rowChar}{args.Column}");
+                    }
+
+                    // Log measurement value if available
+                    if (args.ChangeReason == Tecan.At.Common.Results.ProgressArguments.ChangeType.Data)
+                    {
+                        Console.WriteLine($"Measurement value: {args.Value}");
+                    }
+
+                    // Log change type
+                    Console.WriteLine($"Change type: {args.ChangeReason}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in progress callback: {ex.Message}");
+            }
         }
     }
 
