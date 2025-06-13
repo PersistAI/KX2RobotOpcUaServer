@@ -1623,7 +1623,7 @@ namespace TecanOpcUa
             }
         }
 
-        // Move plate in
+        // Move plate in - follows the pattern from Form1.cs
         public int MovePlateIn()
         {
             if (!_isConnected)
@@ -1632,22 +1632,31 @@ namespace TecanOpcUa
             try
             {
                 Console.WriteLine("Moving plate into reader...");
-                // In a real implementation, this would control the actual device
+
+                // Check if MeasurementServer is available
                 if (_measurementServer != null && _measurementServer.ConnectedReader != null)
                 {
+                    // Use the MeasurementServer to move the plate in
                     _measurementServer.ConnectedReader.Movement.PlateIn();
+                    _isPlateIn = true;
+                    return 0; // Success
                 }
-                _isPlateIn = true;
-                return 0; // Success
+                else
+                {
+                    // If MeasurementServer is not available, we can't move the plate
+                    Console.WriteLine("Error: MeasurementServer not available for plate movement");
+                    return -1; // Error - MeasurementServer required
+                }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error moving plate in: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
                 return -1; // Error
             }
         }
 
-        // Move plate out
+        // Move plate out - follows the pattern from Form1.cs
         public int MovePlateOut()
         {
             if (!_isConnected)
@@ -1656,17 +1665,26 @@ namespace TecanOpcUa
             try
             {
                 Console.WriteLine("Moving plate out of reader...");
-                // In a real implementation, this would control the actual device
+
+                // Check if MeasurementServer is available
                 if (_measurementServer != null && _measurementServer.ConnectedReader != null)
                 {
+                    // Use the MeasurementServer to move the plate out
                     _measurementServer.ConnectedReader.Movement.PlateOut();
+                    _isPlateIn = false;
+                    return 0; // Success
                 }
-                _isPlateIn = false;
-                return 0; // Success
+                else
+                {
+                    // If MeasurementServer is not available, we can't move the plate
+                    Console.WriteLine("Error: MeasurementServer not available for plate movement");
+                    return -1; // Error - MeasurementServer required
+                }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error moving plate out: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
                 return -1; // Error
             }
         }
