@@ -781,75 +781,109 @@ namespace TecanOpcUa
             int settleTime,
             string labelName)
         {
-            // Create a new TecanFile with minimal structure
-            int nID = 0;
-            TecanFile oFile = CreateTecanFile();
-            TecanMeasurement oMeasurement = CreateTecanMeasurement(++nID);
-            MeasurementManualCycle oCycle = CreateManualCycle(++nID);
+            try
+            {
+                Console.WriteLine($"Generating absorbance script with parameters: plateType={plateName}, wellRange={wellRange}, wavelength={wavelength}, numberOfReads={numberOfReads}, settleTime={settleTime}");
 
-            // Set plate
-            CyclePlate oPlate = CreatePlate(plateName, ++nID);
+                // Create a new TecanFile with proper structure
+                int nID = 0;
+                TecanFile oFile = CreateTecanFile();
+                TecanMeasurement oMeasurement = CreateTecanMeasurement(++nID);
+                MeasurementManualCycle oCycle = CreateManualCycle(++nID);
 
-            // Set well range
-            PlateRange oRange = CreateRange(wellRange, ++nID);
+                // Set plate
+                CyclePlate oPlate = CreatePlate(plateName, ++nID);
 
-            // Create absorbance measurement with minimal settings
-            MeasurementAbsorbance oAbsMeas = new MeasurementAbsorbance();
-            oAbsMeas.Name = "ABS";
-            oAbsMeas.ID = ++nID;
+                // Set well range
+                PlateRange oRange = CreateRange(wellRange, ++nID);
 
-            // Create well
-            Well oWell = CreateWell(++nID);
+                // Create absorbance measurement with proper settings
+                MeasurementAbsorbance oAbsMeas = new MeasurementAbsorbance();
+                oAbsMeas.Name = "ABS";
+                oAbsMeas.ID = ++nID;
 
-            // Create measurement reading with minimal settings
-            MeasurementReading oMeasurementReading = new MeasurementReading();
-            oMeasurementReading.ID = ++nID;
-            oMeasurementReading.BeamDiameter = 700; // Default beam diameter
-            oMeasurementReading.BeamGridType = BeamGridType.Single;
-            oMeasurementReading.BeamGridSize = 1;
-            oMeasurementReading.BeamEdgeDistance = "auto";
+                // Create well
+                Well oWell = CreateWell(++nID);
 
-            // Create reading label with only essential parameters
-            ReadingLabel oReadingLabel = new ReadingLabel();
-            oReadingLabel.ID = ++nID;
-            oReadingLabel.Name = labelName;
-            oReadingLabel.ScanType = ScanMode.ScanFixed;
+                // Create measurement reading with proper settings
+                MeasurementReading oMeasurementReading = new MeasurementReading();
+                oMeasurementReading.ID = ++nID;
+                oMeasurementReading.BeamDiameter = 700; // Set to 700 to match sample app
+                oMeasurementReading.BeamGridType = BeamGridType.Single;
+                oMeasurementReading.BeamGridSize = 1;
+                oMeasurementReading.BeamEdgeDistance = "auto";
 
-            // Create settings - essential
-            ReadingSettings oSettings = new ReadingSettings();
-            oSettings.Number = numberOfReads;
-            oSettings.Rate = 25000; // Default rate
+                // Create reading label with proper parameters
+                ReadingLabel oReadingLabel = new ReadingLabel();
+                oReadingLabel.ID = ++nID;
+                oReadingLabel.Name = labelName;
+                oReadingLabel.ScanType = ScanMode.ScanFixed;
 
-            // Create timing - essential
-            ReadingTime oReadingTime = new ReadingTime();
-            oReadingTime.ReadDelay = settleTime;
-            oReadingTime.Flash = 0;
-            oReadingTime.Dark = 0;
-            oReadingTime.ExcitationTime = 0;
-            oReadingTime.IntegrationTime = 0;
-            oReadingTime.LagTime = 0;
+                // Create settings with proper values
+                ReadingSettings oSettings = new ReadingSettings();
+                oSettings.Number = numberOfReads;
+                oSettings.Rate = 25000; // Default rate from sample app
 
-            // Create filter - essential
-            ReadingFilter oFilter = new ReadingFilter();
-            oFilter.Wavelength = (wavelength * 10).ToString(); // Multiply by 10 to match format
-            oFilter.Bandwidth = "50";      // Default bandwidth (5.0 nm)
-            oFilter.Usage = MeasMode2.Absorbance;
-            oFilter.Type = FilterUsage.Ex;
+                // Create timing with proper values
+                ReadingTime oReadingTime = new ReadingTime();
+                oReadingTime.ReadDelay = settleTime;
+                oReadingTime.Flash = 0;
+                oReadingTime.Dark = 0;
+                oReadingTime.ExcitationTime = 0;
+                oReadingTime.IntegrationTime = 0;
+                oReadingTime.LagTime = 0;
 
-            // Assemble the objects with minimal hierarchy
-            oReadingLabel.Timing = oReadingTime;
-            oReadingLabel.Settings = oSettings;
-            oReadingLabel.ExFilter = oFilter;
-            oMeasurementReading.Actions.Add(oReadingLabel);
-            oWell.Actions.Add(oMeasurementReading);
-            oAbsMeas.Actions.Add(oWell);
-            oRange.Actions.Add(oAbsMeas);
-            oPlate.Actions.Add(oRange);
-            oCycle.Actions.Add(oPlate);
-            oMeasurement.Actions.Add(oCycle);
-            oFile.DocumentContent = oMeasurement;
+                // Create filter with proper values and constants
+                ReadingFilter oFilter = new ReadingFilter();
+                oFilter.Wavelength = (wavelength * 10).ToString(); // Multiply by 10 to match format
+                oFilter.Bandwidth = "50";      // Default bandwidth (5.0 nm)
+                oFilter.Usage = "Absorbance";  // Use string constant to match sample app
+                oFilter.Type = "Ex";           // Use string constant to match sample app
 
-            return oFile;
+                // Assemble the objects with proper hierarchy
+                oReadingLabel.Timing = oReadingTime;
+                oReadingLabel.Settings = oSettings;
+                oReadingLabel.ExFilter = oFilter;
+                oMeasurementReading.Actions.Add(oReadingLabel);
+                oWell.Actions.Add(oMeasurementReading);
+                oAbsMeas.Actions.Add(oWell);
+                oRange.Actions.Add(oAbsMeas);
+                oPlate.Actions.Add(oRange);
+                oCycle.Actions.Add(oPlate);
+                oMeasurement.Actions.Add(oCycle);
+                oFile.DocumentContent = oMeasurement;
+
+                // For debugging - save the script to a file
+                try
+                {
+                    string debugPath = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                        "TecanOpcUa",
+                        "Debug");
+
+                    if (!Directory.Exists(debugPath))
+                    {
+                        Directory.CreateDirectory(debugPath);
+                    }
+
+                    string scriptPath = Path.Combine(debugPath, $"AbsScript_{DateTime.Now:yyyyMMdd_HHmmss}.xml");
+                    Tecan.At.Common.FileManagement.FileHandling.Save(oFile, scriptPath);
+                    Console.WriteLine($"Saved debug script to: {scriptPath}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Warning: Could not save debug script: {ex.Message}");
+                }
+
+                Console.WriteLine("Successfully generated absorbance script");
+                return oFile;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error generating absorbance script: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                throw;
+            }
         }
 
         /// <summary>
@@ -867,106 +901,142 @@ namespace TecanOpcUa
             string readingMode,
             string labelName)
         {
-            // Create a new TecanFile with minimal structure
-            int nID = 0;
-            TecanFile oFile = CreateTecanFile();
-            TecanMeasurement oMeasurement = CreateTecanMeasurement(++nID);
-            MeasurementManualCycle oCycle = CreateManualCycle(++nID);
-
-            // Set plate
-            CyclePlate oPlate = CreatePlate(plateName, ++nID);
-
-            // Set well range
-            PlateRange oRange = CreateRange(wellRange, ++nID);
-
-            // Create fluorescence measurement
-            MeasurementFluoInt oFluoMeas = new MeasurementFluoInt();
-            oFluoMeas.Name = "FLUO";
-            oFluoMeas.ID = ++nID;
-
-            // Convert string readingMode to ReadingMode enum
-            if (readingMode.Equals("Top", StringComparison.OrdinalIgnoreCase))
+            try
             {
-                oFluoMeas.ReadingMode = Tecan.At.Common.DocumentManagement.ReadingMode.Top;
+                Console.WriteLine($"Generating fluorescence script with parameters: plateType={plateName}, wellRange={wellRange}, " +
+                    $"excitationWavelength={excitationWavelength}, emissionWavelength={emissionWavelength}, gain={gain}, " +
+                    $"numberOfReads={numberOfReads}, integrationTime={integrationTime}, settleTime={settleTime}, readingMode={readingMode}");
+
+                // Create a new TecanFile with proper structure
+                int nID = 0;
+                TecanFile oFile = CreateTecanFile();
+                TecanMeasurement oMeasurement = CreateTecanMeasurement(++nID);
+                MeasurementManualCycle oCycle = CreateManualCycle(++nID);
+
+                // Set plate
+                CyclePlate oPlate = CreatePlate(plateName, ++nID);
+
+                // Set well range
+                PlateRange oRange = CreateRange(wellRange, ++nID);
+
+                // Create fluorescence measurement
+                MeasurementFluoInt oFluoMeas = new MeasurementFluoInt();
+                oFluoMeas.Name = "FLUO";
+                oFluoMeas.ID = ++nID;
+
+                // Convert string readingMode to ReadingMode enum
+                if (readingMode.Equals("Top", StringComparison.OrdinalIgnoreCase))
+                {
+                    oFluoMeas.ReadingMode = Tecan.At.Common.DocumentManagement.ReadingMode.Top;
+                }
+                else if (readingMode.Equals("Bottom", StringComparison.OrdinalIgnoreCase))
+                {
+                    oFluoMeas.ReadingMode = Tecan.At.Common.DocumentManagement.ReadingMode.Bottom;
+                }
+                else
+                {
+                    // Default to Top if not recognized
+                    oFluoMeas.ReadingMode = Tecan.At.Common.DocumentManagement.ReadingMode.Top;
+                    Console.WriteLine($"Warning: Unrecognized reading mode '{readingMode}', defaulting to Top");
+                }
+
+                // Create well
+                Well oWell = CreateWell(++nID);
+
+                // Create measurement reading
+                MeasurementReading oMeasurementReading = new MeasurementReading();
+                oMeasurementReading.ID = ++nID;
+                oMeasurementReading.BeamDiameter = 700; // Default beam diameter
+                oMeasurementReading.BeamGridType = BeamGridType.Single;
+                oMeasurementReading.BeamGridSize = 1;
+                oMeasurementReading.BeamEdgeDistance = "auto";
+
+                // Create reading label
+                ReadingLabel oReadingLabel = new ReadingLabel();
+                oReadingLabel.ID = ++nID;
+                oReadingLabel.Name = labelName;
+                oReadingLabel.ScanType = ScanMode.ScanFixed;
+
+                // Create settings
+                ReadingSettings oSettings = new ReadingSettings();
+                oSettings.Number = numberOfReads;
+                oSettings.Rate = 25000; // Default rate
+
+                // Create gain
+                ReadingGain oGain = new ReadingGain();
+                oGain.Mode = GainMode.Manual;
+                oGain.Gain = gain;
+
+                // Create timing
+                ReadingTime oReadingTime = new ReadingTime();
+                oReadingTime.ReadDelay = settleTime;
+                oReadingTime.IntegrationTime = integrationTime;
+                oReadingTime.LagTime = 0;
+
+                // Create excitation filter
+                ReadingFilter oExFilter = new ReadingFilter();
+                oExFilter.ID = ++nID;
+                oExFilter.Wavelength = (excitationWavelength * 10).ToString();
+                oExFilter.Bandwidth = "90"; // Default bandwidth
+                oExFilter.Usage = "Fluorescence"; // Use string constant to match sample app
+                oExFilter.Type = "Ex"; // Use string constant to match sample app
+                oExFilter.Attenuation = "0";
+
+                // Create emission filter
+                ReadingFilter oEmFilter = new ReadingFilter();
+                oEmFilter.ID = ++nID;
+                oEmFilter.Wavelength = (emissionWavelength * 10).ToString();
+                oEmFilter.Bandwidth = "90"; // Default bandwidth
+                oEmFilter.Usage = "Fluorescence"; // Use string constant to match sample app
+                oEmFilter.Type = "Em"; // Use string constant to match sample app
+                oEmFilter.Attenuation = "0";
+
+                // Assemble the objects
+                oReadingLabel.Settings = oSettings;
+                oReadingLabel.Gain = oGain;
+                oReadingLabel.Timing = oReadingTime;
+                oReadingLabel.ExFilter = oExFilter;
+                oReadingLabel.EmFilter = oEmFilter;
+                oMeasurementReading.Actions.Add(oReadingLabel);
+                oWell.Actions.Add(oMeasurementReading);
+                oFluoMeas.Actions.Add(oWell);
+                oRange.Actions.Add(oFluoMeas);
+                oPlate.Actions.Add(oRange);
+                oCycle.Actions.Add(oPlate);
+                oMeasurement.Actions.Add(oCycle);
+                oFile.DocumentContent = oMeasurement;
+
+                // For debugging - save the script to a file
+                try
+                {
+                    string debugPath = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                        "TecanOpcUa",
+                        "Debug");
+
+                    if (!Directory.Exists(debugPath))
+                    {
+                        Directory.CreateDirectory(debugPath);
+                    }
+
+                    string scriptPath = Path.Combine(debugPath, $"FluoScript_{DateTime.Now:yyyyMMdd_HHmmss}.xml");
+                    Tecan.At.Common.FileManagement.FileHandling.Save(oFile, scriptPath);
+                    Console.WriteLine($"Saved debug script to: {scriptPath}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Warning: Could not save debug script: {ex.Message}");
+                }
+
+                Console.WriteLine("Successfully generated fluorescence script");
+                return oFile;
             }
-            else if (readingMode.Equals("Bottom", StringComparison.OrdinalIgnoreCase))
+            catch (Exception ex)
             {
-                oFluoMeas.ReadingMode = Tecan.At.Common.DocumentManagement.ReadingMode.Bottom;
+                Console.WriteLine($"Error generating fluorescence script: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                throw;
             }
-            else
-            {
-                // Default to Top if not recognized
-                oFluoMeas.ReadingMode = Tecan.At.Common.DocumentManagement.ReadingMode.Top;
-                Console.WriteLine($"Warning: Unrecognized reading mode '{readingMode}', defaulting to Top");
-            }
-
-            // Create well
-            Well oWell = CreateWell(++nID);
-
-            // Create measurement reading
-            MeasurementReading oMeasurementReading = new MeasurementReading();
-            oMeasurementReading.ID = ++nID;
-            oMeasurementReading.BeamDiameter = 700; // Default beam diameter
-            oMeasurementReading.BeamGridType = BeamGridType.Single;
-            oMeasurementReading.BeamGridSize = 1;
-            oMeasurementReading.BeamEdgeDistance = "auto";
-
-            // Create reading label
-            ReadingLabel oReadingLabel = new ReadingLabel();
-            oReadingLabel.ID = ++nID;
-            oReadingLabel.Name = labelName;
-            oReadingLabel.ScanType = ScanMode.ScanFixed;
-
-            // Create settings
-            ReadingSettings oSettings = new ReadingSettings();
-            oSettings.Number = numberOfReads;
-            oSettings.Rate = 25000; // Default rate
-
-            // Create gain
-            ReadingGain oGain = new ReadingGain();
-            oGain.Mode = GainMode.Manual;
-            oGain.Gain = gain;
-
-            // Create timing
-            ReadingTime oReadingTime = new ReadingTime();
-            oReadingTime.ReadDelay = settleTime;
-            oReadingTime.IntegrationTime = integrationTime;
-            oReadingTime.LagTime = 0;
-
-            // Create excitation filter
-            ReadingFilter oExFilter = new ReadingFilter();
-            oExFilter.ID = ++nID;
-            oExFilter.Wavelength = (excitationWavelength * 10).ToString();
-            oExFilter.Bandwidth = "90"; // Default bandwidth
-            oExFilter.Usage = MeasMode2.Fluorescence;
-            oExFilter.Type = FilterUsage.Ex;
-            oExFilter.Attenuation = "0";
-
-            // Create emission filter
-            ReadingFilter oEmFilter = new ReadingFilter();
-            oEmFilter.ID = ++nID;
-            oEmFilter.Wavelength = (emissionWavelength * 10).ToString();
-            oEmFilter.Bandwidth = "90"; // Default bandwidth
-            oEmFilter.Usage = MeasMode2.Fluorescence;
-            oEmFilter.Type = FilterUsage.Em;
-            oEmFilter.Attenuation = "0";
-
-            // Assemble the objects
-            oReadingLabel.Settings = oSettings;
-            oReadingLabel.Gain = oGain;
-            oReadingLabel.Timing = oReadingTime;
-            oReadingLabel.ExFilter = oExFilter;
-            oReadingLabel.EmFilter = oEmFilter;
-            oMeasurementReading.Actions.Add(oReadingLabel);
-            oWell.Actions.Add(oMeasurementReading);
-            oFluoMeas.Actions.Add(oWell);
-            oRange.Actions.Add(oFluoMeas);
-            oPlate.Actions.Add(oRange);
-            oCycle.Actions.Add(oPlate);
-            oMeasurement.Actions.Add(oCycle);
-            oFile.DocumentContent = oMeasurement;
-
-            return oFile;
         }
 
         /// <summary>
@@ -980,63 +1050,98 @@ namespace TecanOpcUa
             string attenuation,
             string labelName)
         {
-            // Create a new TecanFile with minimal structure
-            int nID = 0;
-            TecanFile oFile = CreateTecanFile();
-            TecanMeasurement oMeasurement = CreateTecanMeasurement(++nID);
-            MeasurementManualCycle oCycle = CreateManualCycle(++nID);
+            try
+            {
+                Console.WriteLine($"Generating luminescence script with parameters: plateType={plateName}, wellRange={wellRange}, " +
+                    $"integrationTime={integrationTime}, settleTime={settleTime}, attenuation={attenuation}");
 
-            // Set plate
-            CyclePlate oPlate = CreatePlate(plateName, ++nID);
+                // Create a new TecanFile with proper structure
+                int nID = 0;
+                TecanFile oFile = CreateTecanFile();
+                TecanMeasurement oMeasurement = CreateTecanMeasurement(++nID);
+                MeasurementManualCycle oCycle = CreateManualCycle(++nID);
 
-            // Set well range
-            PlateRange oRange = CreateRange(wellRange, ++nID);
+                // Set plate
+                CyclePlate oPlate = CreatePlate(plateName, ++nID);
 
-            // Create luminescence measurement
-            MeasurementLuminescence oLumiMeas = new MeasurementLuminescence();
-            oLumiMeas.Name = "LUMI";
-            oLumiMeas.ID = ++nID;
+                // Set well range
+                PlateRange oRange = CreateRange(wellRange, ++nID);
 
-            // Create well
-            Well oWell = CreateWell(++nID);
+                // Create luminescence measurement
+                MeasurementLuminescence oLumiMeas = new MeasurementLuminescence();
+                oLumiMeas.Name = "LUMI";
+                oLumiMeas.ID = ++nID;
 
-            // Create measurement reading
-            MeasurementReading oMeasurementReading = new MeasurementReading();
-            oMeasurementReading.ID = ++nID;
+                // Create well
+                Well oWell = CreateWell(++nID);
 
-            // Create reading label
-            ReadingLabel oReadingLabel = new ReadingLabel();
-            oReadingLabel.ID = ++nID;
-            oReadingLabel.Name = labelName;
-            oReadingLabel.ScanType = ScanMode.ScanFixed;
+                // Create measurement reading
+                MeasurementReading oMeasurementReading = new MeasurementReading();
+                oMeasurementReading.ID = ++nID;
 
-            // Create filter for attenuation
-            ReadingFilter oFilter = new ReadingFilter();
-            oFilter.ID = ++nID;
-            oFilter.Wavelength = "0";
-            oFilter.Usage = FilterUsage.LUM.Empty;
-            oFilter.Bandwidth = "0";
-            oFilter.Attenuation = "0";
-            oFilter.Type = FilterUsage.Em;
+                // Create reading label
+                ReadingLabel oReadingLabel = new ReadingLabel();
+                oReadingLabel.ID = ++nID;
+                oReadingLabel.Name = labelName;
+                oReadingLabel.ScanType = ScanMode.ScanFixed;
 
-            // Create timing
-            ReadingTime oReadingTime = new ReadingTime();
-            oReadingTime.IntegrationTime = integrationTime * 1000; // Convert to μs
-            oReadingTime.ReadDelay = settleTime * 1000; // Convert to μs
+                // Create filter for attenuation
+                ReadingFilter oFilter = new ReadingFilter();
+                oFilter.ID = ++nID;
+                oFilter.Wavelength = "0";
+                oFilter.Usage = "Empty"; // Use string constant to match sample app
+                oFilter.Bandwidth = "0";
+                oFilter.Attenuation = "0";
+                oFilter.Type = "Em"; // Use string constant to match sample app
 
-            // Assemble the objects
-            oReadingLabel.EmFilter = oFilter;
-            oReadingLabel.Timing = oReadingTime;
-            oMeasurementReading.Actions.Add(oReadingLabel);
-            oWell.Actions.Add(oMeasurementReading);
-            oLumiMeas.Actions.Add(oWell);
-            oRange.Actions.Add(oLumiMeas);
-            oPlate.Actions.Add(oRange);
-            oCycle.Actions.Add(oPlate);
-            oMeasurement.Actions.Add(oCycle);
-            oFile.DocumentContent = oMeasurement;
+                // Create timing
+                ReadingTime oReadingTime = new ReadingTime();
+                oReadingTime.IntegrationTime = integrationTime * 1000; // Convert to μs
+                oReadingTime.ReadDelay = settleTime * 1000; // Convert to μs
 
-            return oFile;
+                // Assemble the objects
+                oReadingLabel.EmFilter = oFilter;
+                oReadingLabel.Timing = oReadingTime;
+                oMeasurementReading.Actions.Add(oReadingLabel);
+                oWell.Actions.Add(oMeasurementReading);
+                oLumiMeas.Actions.Add(oWell);
+                oRange.Actions.Add(oLumiMeas);
+                oPlate.Actions.Add(oRange);
+                oCycle.Actions.Add(oPlate);
+                oMeasurement.Actions.Add(oCycle);
+                oFile.DocumentContent = oMeasurement;
+
+                // For debugging - save the script to a file
+                try
+                {
+                    string debugPath = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                        "TecanOpcUa",
+                        "Debug");
+
+                    if (!Directory.Exists(debugPath))
+                    {
+                        Directory.CreateDirectory(debugPath);
+                    }
+
+                    string scriptPath = Path.Combine(debugPath, $"LumiScript_{DateTime.Now:yyyyMMdd_HHmmss}.xml");
+                    Tecan.At.Common.FileManagement.FileHandling.Save(oFile, scriptPath);
+                    Console.WriteLine($"Saved debug script to: {scriptPath}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Warning: Could not save debug script: {ex.Message}");
+                }
+
+                Console.WriteLine("Successfully generated luminescence script");
+                return oFile;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error generating luminescence script: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                throw;
+            }
         }
 
         /// <summary>
