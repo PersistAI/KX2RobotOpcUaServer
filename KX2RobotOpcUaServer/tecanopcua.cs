@@ -517,43 +517,55 @@ namespace TecanOpcUa
 
                 if (_tecan._measurementServer != null && _tecan._measurementServer.ConnectedReader != null)
                 {
-                    // Generate the measurement script
-                    TecanFile measurementScript = GenerateAbsorbanceScript(
-                        plateType,
-                        wellRange,
-                        wavelength,
-                        numberOfFlashes,
-                        settleTime,
-                        "Absorbance_" + result.Id);
+                    try
+                    {
+                        // Generate the measurement script
+                        TecanFile measurementScript = GenerateAbsorbanceScript(
+                            plateType,
+                            wellRange,
+                            wavelength,
+                            numberOfFlashes,
+                            settleTime,
+                            "Absorbance_" + result.Id);
 
-                    // Ensure plate is in
-                    _tecan.MovePlateIn();
+                        // Ensure plate is in
+                        _tecan.MovePlateIn();
 
-                    // Create a GUID for this measurement run
-                    Guid measurementGuid = Guid.NewGuid();
+                        // Create a GUID for this measurement run
+                        Guid measurementGuid = Guid.NewGuid();
 
-                    // Set script to measurement server
-                    _tecan._measurementServer.ActionsAsObjects = measurementScript;
+                        // Set script to measurement server
+                        _tecan._measurementServer.ActionsAsObjects = measurementScript;
 
-                    // Start the measurement
-                    _tecan._measurementServer.NewRunState(measurementGuid);
-                    _tecan._measurementServer.Run(measurementGuid);
+                        // Configure in-process messaging (critical for measurement execution)
+                        _tecan._measurementServer.UseInprocMessagingService = true;
 
-                    // Wait for measurement to complete (simplified)
-                    Thread.Sleep(5000);
+                        // Start the measurement
+                        _tecan._measurementServer.NewRunState(measurementGuid);
+                        _tecan._measurementServer.Run(measurementGuid);
 
-                    // Generate a result file path
-                    string resultFilePath = Path.Combine(
-                        _outputFolder,
-                        $"Absorbance_{DateTime.Now:yyyyMMdd_HHmmss}_{result.Id}.xml");
+                        // Wait for measurement to complete (simplified)
+                        Thread.Sleep(5000);
 
-                    result.ResultFilePath = resultFilePath;
+                        // Generate a result file path
+                        string resultFilePath = Path.Combine(
+                            _outputFolder,
+                            $"Absorbance_{DateTime.Now:yyyyMMdd_HHmmss}_{result.Id}.xml");
 
-                    // Add to results list
-                    _measurementResults.Add(result);
+                        result.ResultFilePath = resultFilePath;
 
-                    Console.WriteLine($"Absorbance measurement completed. Result ID: {result.Id}");
-                    return result;
+                        // Add to results list
+                        _measurementResults.Add(result);
+
+                        Console.WriteLine($"Absorbance measurement completed. Result ID: {result.Id}");
+                        return result;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error during measurement execution: {ex.Message}");
+                        Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                        throw;
+                    }
                 }
                 else
                 {
@@ -623,47 +635,59 @@ namespace TecanOpcUa
 
                 if (_tecan._measurementServer != null && _tecan._measurementServer.ConnectedReader != null)
                 {
-                    // Generate the measurement script
-                    TecanFile measurementScript = GenerateFluorescenceScript(
-                        plateType,
-                        wellRange,
-                        excitationWavelength,
-                        emissionWavelength,
-                        gain,
-                        numberOfFlashes,
-                        integrationTime,
-                        settleTime,
-                        readingMode,
-                        "Fluorescence_" + result.Id);
+                    try
+                    {
+                        // Generate the measurement script
+                        TecanFile measurementScript = GenerateFluorescenceScript(
+                            plateType,
+                            wellRange,
+                            excitationWavelength,
+                            emissionWavelength,
+                            gain,
+                            numberOfFlashes,
+                            integrationTime,
+                            settleTime,
+                            readingMode,
+                            "Fluorescence_" + result.Id);
 
-                    // Ensure plate is in
-                    _tecan.MovePlateIn();
+                        // Ensure plate is in
+                        _tecan.MovePlateIn();
 
-                    // Create a GUID for this measurement run
-                    Guid measurementGuid = Guid.NewGuid();
+                        // Create a GUID for this measurement run
+                        Guid measurementGuid = Guid.NewGuid();
 
-                    // Set script to measurement server
-                    _tecan._measurementServer.ActionsAsObjects = measurementScript;
+                        // Set script to measurement server
+                        _tecan._measurementServer.ActionsAsObjects = measurementScript;
 
-                    // Start the measurement
-                    _tecan._measurementServer.NewRunState(measurementGuid);
-                    _tecan._measurementServer.Run(measurementGuid);
+                        // Configure in-process messaging (critical for measurement execution)
+                        _tecan._measurementServer.UseInprocMessagingService = true;
 
-                    // Wait for measurement to complete (simplified)
-                    Thread.Sleep(5000);
+                        // Start the measurement
+                        _tecan._measurementServer.NewRunState(measurementGuid);
+                        _tecan._measurementServer.Run(measurementGuid);
 
-                    // Generate a result file path
-                    string resultFilePath = Path.Combine(
-                        _outputFolder,
-                        $"Fluorescence_{DateTime.Now:yyyyMMdd_HHmmss}_{result.Id}.xml");
+                        // Wait for measurement to complete (simplified)
+                        Thread.Sleep(5000);
 
-                    result.ResultFilePath = resultFilePath;
+                        // Generate a result file path
+                        string resultFilePath = Path.Combine(
+                            _outputFolder,
+                            $"Fluorescence_{DateTime.Now:yyyyMMdd_HHmmss}_{result.Id}.xml");
 
-                    // Add to results list
-                    _measurementResults.Add(result);
+                        result.ResultFilePath = resultFilePath;
 
-                    Console.WriteLine($"Fluorescence measurement completed. Result ID: {result.Id}");
-                    return result;
+                        // Add to results list
+                        _measurementResults.Add(result);
+
+                        Console.WriteLine($"Fluorescence measurement completed. Result ID: {result.Id}");
+                        return result;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error during measurement execution: {ex.Message}");
+                        Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                        throw;
+                    }
                 }
                 else
                 {
@@ -720,43 +744,55 @@ namespace TecanOpcUa
 
                 if (_tecan._measurementServer != null && _tecan._measurementServer.ConnectedReader != null)
                 {
-                    // Generate the measurement script
-                    TecanFile measurementScript = GenerateLuminescenceScript(
-                        plateType,
-                        wellRange,
-                        integrationTime,
-                        settleTime,
-                        attenuation,
-                        "Luminescence_" + result.Id);
+                    try
+                    {
+                        // Generate the measurement script
+                        TecanFile measurementScript = GenerateLuminescenceScript(
+                            plateType,
+                            wellRange,
+                            integrationTime,
+                            settleTime,
+                            attenuation,
+                            "Luminescence_" + result.Id);
 
-                    // Ensure plate is in
-                    _tecan.MovePlateIn();
+                        // Ensure plate is in
+                        _tecan.MovePlateIn();
 
-                    // Create a GUID for this measurement run
-                    Guid measurementGuid = Guid.NewGuid();
+                        // Create a GUID for this measurement run
+                        Guid measurementGuid = Guid.NewGuid();
 
-                    // Set script to measurement server
-                    _tecan._measurementServer.ActionsAsObjects = measurementScript;
+                        // Set script to measurement server
+                        _tecan._measurementServer.ActionsAsObjects = measurementScript;
 
-                    // Start the measurement
-                    _tecan._measurementServer.NewRunState(measurementGuid);
-                    _tecan._measurementServer.Run(measurementGuid);
+                        // Configure in-process messaging (critical for measurement execution)
+                        _tecan._measurementServer.UseInprocMessagingService = true;
 
-                    // Wait for measurement to complete (simplified)
-                    Thread.Sleep(5000);
+                        // Start the measurement
+                        _tecan._measurementServer.NewRunState(measurementGuid);
+                        _tecan._measurementServer.Run(measurementGuid);
 
-                    // Generate a result file path
-                    string resultFilePath = Path.Combine(
-                        _outputFolder,
-                        $"Luminescence_{DateTime.Now:yyyyMMdd_HHmmss}_{result.Id}.xml");
+                        // Wait for measurement to complete (simplified)
+                        Thread.Sleep(5000);
 
-                    result.ResultFilePath = resultFilePath;
+                        // Generate a result file path
+                        string resultFilePath = Path.Combine(
+                            _outputFolder,
+                            $"Luminescence_{DateTime.Now:yyyyMMdd_HHmmss}_{result.Id}.xml");
 
-                    // Add to results list
-                    _measurementResults.Add(result);
+                        result.ResultFilePath = resultFilePath;
 
-                    Console.WriteLine($"Luminescence measurement completed. Result ID: {result.Id}");
-                    return result;
+                        // Add to results list
+                        _measurementResults.Add(result);
+
+                        Console.WriteLine($"Luminescence measurement completed. Result ID: {result.Id}");
+                        return result;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error during measurement execution: {ex.Message}");
+                        Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                        throw;
+                    }
                 }
                 else
                 {
