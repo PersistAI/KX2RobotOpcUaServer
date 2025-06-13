@@ -1558,6 +1558,9 @@ namespace TecanOpcUa
         // Constructor
         public TecanControl()
         {
+            // Initialize DocumentManagement.Reader - CRITICAL for XML deserialization
+            ObjectFactory.AddEntryPoint(new Tecan.At.Common.DocumentManagement.Reader.DocumentEntryPoint());
+
             // Initialize any required resources
             InitializeAppSettings();
         }
