@@ -24,6 +24,7 @@ using System.Globalization;
 using Tecan.At.XFluor.Connect;
 using Tecan.At.XFluor.Core;
 using Tecan.At.XFluor.ExcelOutput;
+using Tecan.At.Common.FileManagement;
 using Tecan.At.Instrument.Common.Reader;
 
 
@@ -1314,8 +1315,22 @@ namespace TecanOpcUa
                 TecanFile oInstrumentDefinitions = server.ConnectedReader.Information.GetInstrumentDefinitions();
                 TecanReaderDefinition oDefinitions = (TecanReaderDefinition)oInstrumentDefinitions.DocumentContent;
 
-                // Create an output "worker"
-                _resultOutput = new ResultOutput(tecanFile, oAssemblies, oDefinitions, _currentMeasurementGuid);
+                // First convert the TecanFile to XML string and back to ensure proper XML structure
+                // This is CRITICAL - the sample application does this conversion before passing to ResultOutput
+                XmlSupport objXML = new XmlSupport();
+                XmlNode objNode = tecanFile.GetXmlNode(objXML);
+                objXML.AddXmlNode(objNode);
+                string xmlString = objXML.XmlDocumentAsString();
+
+                // Now convert back to TecanFile object
+                TecanFile processedTecanFile = FileHandling.LoadXml(xmlString) as TecanFile;
+                if (processedTecanFile == null)
+                {
+                    throw new InvalidOperationException("Failed to convert TecanFile to XML and back");
+                }
+
+                // Create an output "worker" with the processed TecanFile
+                _resultOutput = new ResultOutput(processedTecanFile, oAssemblies, oDefinitions, _currentMeasurementGuid);
 
                 string sDeviceName = server.ConnectedReader.Information.GetProductName();
                 string sFileName = sDeviceName + "_" + DateTime.Now.ToString("yyyy-MM-dd HH_mm_ss", DateTimeFormatInfo.InvariantInfo) + ".xml";
