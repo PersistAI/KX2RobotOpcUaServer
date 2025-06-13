@@ -1307,34 +1307,43 @@ namespace TecanOpcUa
             {
                 Console.WriteLine("Setting up output mechanism for measurement...");
 
-                // Create a new ResultOutput object
-                _resultOutput = new ResultOutput(tecanFile, new Dictionary<string, string>(), null, _currentMeasurementGuid);
+                // Get all versions of software components
+                Dictionary<string, string> oAssemblies = new Dictionary<string, string>();
 
-                // Set device name
-                _resultOutput.DeviceName = server.ConnectedReader.Information.GetProductName();
+                // Get instrument versions (to provide the output mechanism with some additional information about the instrument, e.g. Version information about various modules)
+                TecanFile oInstrumentDefinitions = server.ConnectedReader.Information.GetInstrumentDefinitions();
+                TecanReaderDefinition oDefinitions = (TecanReaderDefinition)oInstrumentDefinitions.DocumentContent;
 
-                // Set simulation mode
-                _resultOutput.Simulation = false;
+                // Create an output "worker"
+                _resultOutput = new ResultOutput(tecanFile, oAssemblies, oDefinitions, _currentMeasurementGuid);
 
-                // Add exception listener
-                _resultOutput.AddExceptionListener(new Tecan.At.Common.ExceptionListener(OutputExceptionListener));
+                string sDeviceName = server.ConnectedReader.Information.GetProductName();
+                string sFileName = sDeviceName + "_" + DateTime.Now.ToString("yyyy-MM-dd HH_mm_ss", DateTimeFormatInfo.InvariantInfo) + ".xml";
 
-                // Create XML output
-                string xmlFilePath = Path.Combine(
-                    _outputFolder,
-                    $"Measurement_{DateTime.Now:yyyyMMdd_HHmmss}.xml");
-
+                // Create XML output (simplified - no Excel output for server)
+                string xmlFilePath = Path.Combine(_outputFolder, sFileName);
                 XmlOutput xmlOutput = new XmlOutput(xmlFilePath);
                 _resultOutput.MeasurementDataOutput = xmlOutput;
 
-                // Initialize the output
-                bool outputInitialized = _resultOutput.Init();
-                if (!outputInitialized)
+                _resultOutput.DeviceName = sDeviceName;
+
+                // Simulation mode?
+                _resultOutput.Simulation = IsSimulated(server);
+
+                // Exception listener (must not be null!)
+                _resultOutput.AddExceptionListener(new Tecan.At.Common.ExceptionListener(OutputExceptionListener));
+
+                bool bOutputOK = _resultOutput.Init();
+                if (!bOutputOK)
                 {
-                    throw new InvalidOperationException("Failed to initialize output mechanism");
+                    throw new InvalidOperationException("Unable to initialize output mechanism");
                 }
 
-                // Start listening for measurement data
+                // Feed the progress mechanism with data during measurement
+                _resultOutput.UpdateDataDelegate = new QueueProcessor.UpdateData(MeasurementProgress);
+
+                // Start listening - EXACTLY like sample app
+                server.UseInprocMessagingService = true;
                 _resultOutput.StartListening(server.MessagingService);
 
                 Console.WriteLine("Output mechanism setup completed successfully");
@@ -1344,6 +1353,27 @@ namespace TecanOpcUa
                 Console.WriteLine($"Error setting up output: {ex.Message}");
                 Console.WriteLine($"Stack trace: {ex.StackTrace}");
                 throw;
+            }
+        }
+
+        /// <summary>
+        /// Checks if the server is in simulation mode
+        /// </summary>
+        private bool IsSimulated(MeasurementServer server)
+        {
+            try
+            {
+                if (server != null && server.ConnectedReader != null)
+                {
+                    string instrumentName = server.ConnectedReader.Information.GetInstrumentName();
+                    return instrumentName.Contains("SIM");
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error checking simulation mode: {ex.Message}");
+                return false;
             }
         }
 
