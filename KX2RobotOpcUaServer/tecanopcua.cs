@@ -1231,18 +1231,18 @@ namespace TecanOpcUa
                     // Try multiple approaches to discover instruments
                     try
                     {
-                        // Try with USB|SIM READER filter
-                        Console.WriteLine("Trying GetInstruments with USB|SIM READER filter...");
-                        string connectionString = "PORTTYPE=USB|SIM, TYPE=READER";
+                        // Try with USB READER filter (no simulators)
+                        Console.WriteLine("Trying GetInstruments with USB READER filter...");
+                        string connectionString = "PORTTYPE=USB, TYPE=READER";
                         Console.WriteLine($"Using connection string: {connectionString}");
                         instruments = instrumentServer.GetInstruments(connectionString);
-                        Console.WriteLine($"Found {(instruments != null ? instruments.Count : 0)} instruments using GetInstruments with USB|SIM READER filter");
+                        Console.WriteLine($"Found {(instruments != null ? instruments.Count : 0)} instruments using GetInstruments with USB READER filter");
 
                         // If that didn't work, try with a more generic filter
                         if (instruments == null || instruments.Count == 0)
                         {
                             Console.WriteLine("Trying GetInstruments with generic filter...");
-                            connectionString = "PORTTYPE=USB|SIM";
+                            connectionString = "PORTTYPE=USB";
                             Console.WriteLine($"Using connection string: {connectionString}");
                             instruments = instrumentServer.GetInstruments(connectionString);
                             Console.WriteLine($"Found {(instruments != null ? instruments.Count : 0)} instruments using GetInstruments with generic filter");
@@ -1391,8 +1391,8 @@ namespace TecanOpcUa
                     InstrumentServer instrumentServer = new InstrumentServer();
                     instrumentServer.AppSettings = appSettings;
 
-                    // Use the correct connection string format with the device's serial
-                    string connectionString = $"porttype=USB|SIM, type={device.Type.ToLower()}, option=default, name={device.Name}, serial={device.Serial}";
+                    // Use the correct connection string format with the device's serial (USB only)
+                    string connectionString = $"porttype=USB, type={device.Type.ToLower()}, option=default, name={device.Name}, serial={device.Serial}";
                     Console.WriteLine($"Using connection string: {connectionString}");
 
                     // Connect to the device
@@ -1476,8 +1476,8 @@ namespace TecanOpcUa
                     InstrumentServer instrumentServer = new InstrumentServer();
                     instrumentServer.AppSettings = appSettings;
 
-                    // Use the correct connection string format
-                    string connectionString = "porttype=USB|SIM, type=reader, option=default, name=*";
+                    // Use the correct connection string format (USB only)
+                    string connectionString = "porttype=USB, type=reader, option=default, name=*";
                     Console.WriteLine($"Using connection string: {connectionString}");
 
                     // Connect to the device with UserDialog method
@@ -1528,8 +1528,8 @@ namespace TecanOpcUa
                             _measurementServer = new MeasurementServer(appSettings, null);
                         }
 
-                        // Use the correct connection string format from Form1.cs
-                        bool connected = _measurementServer.Connect(InstrumentConnectionMethod.UserDialog, "porttype=USB|SIM, type=reader, option=default, name=*");
+                        // Use the correct connection string format from Form1.cs (USB only)
+                        bool connected = _measurementServer.Connect(InstrumentConnectionMethod.UserDialog, "porttype=USB, type=reader, option=default, name=*");
 
                         if (connected)
                         {
