@@ -568,7 +568,9 @@ namespace TecanOpcUa
                         _tecan._measurementServer.Run(_currentMeasurementGuid);
 
                         // Wait for measurement to complete with proper message processing
-                        Wait(10000);  // 10 second timeout
+                        // This is a blocking call that waits for the measurement to finish
+                        // or until timeout is reached
+                        WaitForMeasurementCompletion(30000);  // 30 second timeout
 
                         // Stop the output mechanism
                         StopOutput();
@@ -1430,7 +1432,7 @@ namespace TecanOpcUa
 
         /// <summary>
         /// Waits for the specified timeout while processing messages
-        /// This is an exact replication of the Wait method from Form1.cs but adapted for server-side use
+        /// This is an adaptation of the Wait method from Form1.cs but enhanced for server-side use
         /// </summary>
         /// <param name="timeoutMillis">The timeout in milliseconds</param>
         private void Wait(int timeoutMillis)
@@ -1472,6 +1474,120 @@ namespace TecanOpcUa
             }
 
             Console.WriteLine("Wait completed");
+        }
+
+        /// <summary>
+        /// Waits for measurement completion with improved detection of actual completion
+        /// </summary>
+        /// <param name="timeoutMillis">Maximum time to wait in milliseconds</param>
+        private void WaitForMeasurementCompletion(int timeoutMillis)
+        {
+            Console.WriteLine($"Waiting for measurement to complete (timeout: {timeoutMillis}ms)...");
+
+            // Create a TimeSpan for the timeout
+            TimeSpan timeSpan = new TimeSpan(0, 0, 0, 0, timeoutMillis);
+            DateTime startTime = DateTime.Now;
+
+            // Track when we last saw progress
+            DateTime lastProgressTime = DateTime.Now;
+            bool hasSeenData = false;
+            bool measurementCompleted = false;
+            int dataPointsReceived = 0;
+            string lastActionTag = string.Empty;
+
+            // Setup progress monitoring
+            if (_resultOutput != null)
+            {
+                // Add progress monitoring delegate that will update lastProgressTime
+                _resultOutput.UpdateDataDelegate = new QueueProcessor.UpdateData(delegate (Tecan.At.Common.Results.ProgressArguments args) {
+                    // Update the last progress time
+                    lastProgressTime = DateTime.Now;
+
+                    // Check if we're seeing actual measurement data
+                    if (args != null)
+                    {
+                        if (args.ChangeReason == Tecan.At.Common.Results.ProgressArguments.ChangeType.Data)
+                        {
+                            hasSeenData = true;
+                            dataPointsReceived++;
+                            Console.WriteLine($"Measurement data received: {args.Value} at well {(char)('A' + args.Row - 1)}{args.Column}");
+                        }
+
+                        // Log progress information
+                        if (!string.IsNullOrEmpty(args.ActionTag))
+                        {
+                            lastActionTag = args.ActionTag;
+                            Console.WriteLine($"Measurement action: {args.ActionTag}");
+
+                            // Some action tags might indicate completion
+                            if (args.ActionTag.Contains("Complete") ||
+                                args.ActionTag.Contains("Finished") ||
+                                args.ActionTag.Contains("End"))
+                            {
+                                Console.WriteLine("Measurement completion action detected");
+                                measurementCompleted = true;
+                            }
+                        }
+
+                        // Check for action change which might indicate completion
+                        if (args.ChangeReason == Tecan.At.Common.Results.ProgressArguments.ChangeType.Action)
+                        {
+                            Console.WriteLine($"Action change detected: {args.ActionTag}");
+
+                            // If we've already seen data and now we're getting an action change,
+                            // it might indicate we're moving to the next phase or completing
+                            if (hasSeenData && dataPointsReceived > 0)
+                            {
+                                Console.WriteLine("Action change after data received - possible completion indicator");
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Wait loop with improved completion detection
+            while (true)
+            {
+                // Check if we've exceeded the timeout
+                DateTime currentTime = DateTime.Now;
+                if (((currentTime - startTime) > timeSpan) && timeoutMillis > 0)
+                {
+                    Console.WriteLine("Wait timeout reached");
+                    break;
+                }
+
+                // Check if measurement is complete based on explicit completion flag
+                if (measurementCompleted)
+                {
+                    Console.WriteLine("Measurement completed successfully (explicit completion)");
+                    break;
+                }
+
+                // Check if we've seen data but no progress for a while (indicates completion)
+                if (hasSeenData && (currentTime - lastProgressTime).TotalSeconds > 3)
+                {
+                    Console.WriteLine("Measurement appears complete (no progress for 3 seconds after receiving data)");
+                    break;
+                }
+
+                // Check if we've received a significant amount of data points (indicates progress)
+                if (dataPointsReceived > 10 && (currentTime - lastProgressTime).TotalSeconds > 2)
+                {
+                    Console.WriteLine($"Measurement likely complete (received {dataPointsReceived} data points with no activity for 2 seconds)");
+                    break;
+                }
+
+                // Process any pending messages
+                Thread.Sleep(10);
+            }
+
+            // Remove progress monitoring
+            if (_resultOutput != null)
+            {
+                _resultOutput.UpdateDataDelegate = null;
+            }
+
+            Console.WriteLine("Wait for measurement completion finished");
         }
 
         // Track the last time we saw progress
