@@ -447,7 +447,7 @@ namespace TecanOpcUa
 
         #region Well selection Helpers
 
-        
+
         #endregion Well selection Helpers
 
         #region Query Script Helpers
@@ -687,6 +687,9 @@ namespace TecanOpcUa
         private ResultOutput _resultOutput = null;
         private Guid _currentMeasurementGuid;
 
+        // Dictionary to store measurement data by well position (e.g., "A1", "B2")
+        private Dictionary<string, double> wellData = new Dictionary<string, double>();
+
         /// <summary>
         /// Constructor
         /// </summary>
@@ -781,6 +784,9 @@ namespace TecanOpcUa
 
                         // Ensure plate is in
                         _tecan.MovePlateIn();
+
+                        // Clear any previous measurement data
+                        ClearWellData();
 
                         // Create a GUID for this measurement run
                         _currentMeasurementGuid = Guid.NewGuid();
@@ -926,6 +932,9 @@ namespace TecanOpcUa
                         // Ensure plate is in
                         _tecan.MovePlateIn();
 
+                        // Clear any previous measurement data
+                        ClearWellData();
+
                         // Create a GUID for this measurement run
                         _currentMeasurementGuid = Guid.NewGuid();
 
@@ -957,7 +966,7 @@ namespace TecanOpcUa
                         _tecan._measurementServer.Run(_currentMeasurementGuid);
 
                         // Wait for measurement to complete with proper message processing
-                        Wait(10000);  // 10 second timeout
+                        WaitForMeasurementCompletion(30000);  // 30 second timeout
 
                         // Stop the output mechanism
                         StopOutput();
@@ -1051,6 +1060,9 @@ namespace TecanOpcUa
                         // Ensure plate is in
                         _tecan.MovePlateIn();
 
+                        // Clear any previous measurement data
+                        ClearWellData();
+
                         // Create a GUID for this measurement run
                         _currentMeasurementGuid = Guid.NewGuid();
 
@@ -1082,7 +1094,7 @@ namespace TecanOpcUa
                         _tecan._measurementServer.Run(_currentMeasurementGuid);
 
                         // Wait for measurement to complete with proper message processing
-                        Wait(10000);  // 10 second timeout
+                        WaitForMeasurementCompletion(30000);  // 30 second timeout
 
                         // Stop the output mechanism
                         StopOutput();
@@ -1783,7 +1795,17 @@ namespace TecanOpcUa
                         {
                             hasSeenData = true;
                             dataPointsReceived++;
-                            Console.WriteLine($"Measurement data received: {args.Value} at well {(char)('A' + args.Row - 1)}{args.Column}");
+
+                            // Calculate well position (e.g., A1, B2, etc.)
+                            string wellPosition = $"{(char)('A' + args.Row - 1)}{args.Column}";
+
+                            // Store the measurement data in a dictionary for later use
+                            if (!wellData.ContainsKey(wellPosition))
+                            {
+                                wellData[wellPosition] = args.Value;
+                            }
+
+                            Console.WriteLine($"Measurement data received: {args.Value} at well {wellPosition}");
                         }
 
                         // Log progress information
@@ -1865,6 +1887,37 @@ namespace TecanOpcUa
 
         // Track the last time we saw progress
         private DateTime _lastProgressTime = DateTime.MinValue;
+
+        /// <summary>
+        /// Gets the measurement data for a specific well
+        /// </summary>
+        /// <param name="wellPosition">The well position (e.g., "A1", "B2")</param>
+        /// <returns>The measurement value, or null if no data exists for the well</returns>
+        public double? GetWellData(string wellPosition)
+        {
+            if (wellData.ContainsKey(wellPosition))
+            {
+                return wellData[wellPosition];
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Gets all measurement data as a dictionary of well positions to values
+        /// </summary>
+        /// <returns>Dictionary mapping well positions to measurement values</returns>
+        public Dictionary<string, double> GetAllWellData()
+        {
+            return new Dictionary<string, double>(wellData);
+        }
+
+        /// <summary>
+        /// Clears all measurement data
+        /// </summary>
+        public void ClearWellData()
+        {
+            wellData.Clear();
+        }
 
         /// <summary>
         /// Callback for measurement progress updates
@@ -2942,6 +2995,104 @@ namespace TecanOpcUa
                     // Create measurements folder
                     _measurementsFolder = CreateFolder(_tecanFolder, "Measurements", "Measurements");
 
+                    // Create methods to retrieve measurement data
+                    MethodState getWellDataMethod = CreateMethod(_measurementsFolder, "GetWellData", "Get Well Data");
+                    MethodState getAllWellDataMethod = CreateMethod(_measurementsFolder, "GetAllWellData", "Get All Well Data");
+                    MethodState clearWellDataMethod = CreateMethod(_measurementsFolder, "ClearWellData", "Clear Well Data");
+
+                    // Define input arguments for GetWellData
+                    getWellDataMethod.InputArguments = new PropertyState<Argument[]>(getWellDataMethod);
+                    getWellDataMethod.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                    getWellDataMethod.InputArguments.BrowseName = BrowseNames.InputArguments;
+                    getWellDataMethod.InputArguments.DisplayName = getWellDataMethod.InputArguments.BrowseName.Name;
+                    getWellDataMethod.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                    getWellDataMethod.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                    getWellDataMethod.InputArguments.DataType = DataTypeIds.Argument;
+                    getWellDataMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
+
+                    Argument wellPositionArgument = new Argument();
+                    wellPositionArgument.Name = "WellPosition";
+                    wellPositionArgument.Description = new LocalizedText("The well position (e.g., 'A1', 'B2')");
+                    wellPositionArgument.DataType = DataTypeIds.String;
+                    wellPositionArgument.ValueRank = ValueRanks.Scalar;
+
+                    getWellDataMethod.InputArguments.Value = new Argument[] { wellPositionArgument };
+
+                    // Define output arguments for GetWellData
+                    getWellDataMethod.OutputArguments = new PropertyState<Argument[]>(getWellDataMethod);
+                    getWellDataMethod.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                    getWellDataMethod.OutputArguments.BrowseName = BrowseNames.OutputArguments;
+                    getWellDataMethod.OutputArguments.DisplayName = getWellDataMethod.OutputArguments.BrowseName.Name;
+                    getWellDataMethod.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                    getWellDataMethod.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                    getWellDataMethod.OutputArguments.DataType = DataTypeIds.Argument;
+                    getWellDataMethod.OutputArguments.ValueRank = ValueRanks.OneDimension;
+
+                    Argument wellValueArgument = new Argument();
+                    wellValueArgument.Name = "Value";
+                    wellValueArgument.Description = new LocalizedText("The measurement value for the specified well");
+                    wellValueArgument.DataType = DataTypeIds.Double;
+                    wellValueArgument.ValueRank = ValueRanks.Scalar;
+
+                    Argument hasValueArgument = new Argument();
+                    hasValueArgument.Name = "HasValue";
+                    hasValueArgument.Description = new LocalizedText("Indicates whether a value was found for the specified well");
+                    hasValueArgument.DataType = DataTypeIds.Boolean;
+                    hasValueArgument.ValueRank = ValueRanks.Scalar;
+
+                    getWellDataMethod.OutputArguments.Value = new Argument[] { wellValueArgument, hasValueArgument };
+
+                    // Define input arguments for GetAllWellData (none)
+                    getAllWellDataMethod.InputArguments = new PropertyState<Argument[]>(getAllWellDataMethod);
+                    getAllWellDataMethod.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                    getAllWellDataMethod.InputArguments.BrowseName = BrowseNames.InputArguments;
+                    getAllWellDataMethod.InputArguments.DisplayName = getAllWellDataMethod.InputArguments.BrowseName.Name;
+                    getAllWellDataMethod.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                    getAllWellDataMethod.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                    getAllWellDataMethod.InputArguments.DataType = DataTypeIds.Argument;
+                    getAllWellDataMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
+                    getAllWellDataMethod.InputArguments.Value = new Argument[0];
+
+                    // Define output arguments for GetAllWellData
+                    getAllWellDataMethod.OutputArguments = new PropertyState<Argument[]>(getAllWellDataMethod);
+                    getAllWellDataMethod.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                    getAllWellDataMethod.OutputArguments.BrowseName = BrowseNames.OutputArguments;
+                    getAllWellDataMethod.OutputArguments.DisplayName = getAllWellDataMethod.OutputArguments.BrowseName.Name;
+                    getAllWellDataMethod.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                    getAllWellDataMethod.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                    getAllWellDataMethod.OutputArguments.DataType = DataTypeIds.Argument;
+                    getAllWellDataMethod.OutputArguments.ValueRank = ValueRanks.OneDimension;
+
+                    Argument wellDataArgument = new Argument();
+                    wellDataArgument.Name = "WellData";
+                    wellDataArgument.Description = new LocalizedText("JSON string containing all well data as key-value pairs");
+                    wellDataArgument.DataType = DataTypeIds.String;
+                    wellDataArgument.ValueRank = ValueRanks.Scalar;
+
+                    getAllWellDataMethod.OutputArguments.Value = new Argument[] { wellDataArgument };
+
+                    // Define input arguments for ClearWellData (none)
+                    clearWellDataMethod.InputArguments = new PropertyState<Argument[]>(clearWellDataMethod);
+                    clearWellDataMethod.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                    clearWellDataMethod.InputArguments.BrowseName = BrowseNames.InputArguments;
+                    clearWellDataMethod.InputArguments.DisplayName = clearWellDataMethod.InputArguments.BrowseName.Name;
+                    clearWellDataMethod.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                    clearWellDataMethod.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                    clearWellDataMethod.InputArguments.DataType = DataTypeIds.Argument;
+                    clearWellDataMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
+                    clearWellDataMethod.InputArguments.Value = new Argument[0];
+
+                    // Define output arguments for ClearWellData (none)
+                    clearWellDataMethod.OutputArguments = new PropertyState<Argument[]>(clearWellDataMethod);
+                    clearWellDataMethod.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                    clearWellDataMethod.OutputArguments.BrowseName = BrowseNames.OutputArguments;
+                    clearWellDataMethod.OutputArguments.DisplayName = clearWellDataMethod.OutputArguments.BrowseName.Name;
+                    clearWellDataMethod.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                    clearWellDataMethod.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                    clearWellDataMethod.OutputArguments.DataType = DataTypeIds.Argument;
+                    clearWellDataMethod.OutputArguments.ValueRank = ValueRanks.OneDimension;
+                    clearWellDataMethod.OutputArguments.Value = new Argument[0];
+
                     // Create absorbance measurement method
                     MethodState absorbanceMeasurementMethod = CreateMethod(_measurementsFolder, "PerformAbsorbanceMeasurement", "Perform Absorbance Measurement");
 
@@ -3738,6 +3889,15 @@ namespace TecanOpcUa
                     case "PerformLuminescenceMeasurement":
                         return OnPerformLuminescenceMeasurement(context, method, inputArguments, outputArguments);
 
+                    case "GetWellData":
+                        return OnGetWellData(context, method, inputArguments, outputArguments);
+
+                    case "GetAllWellData":
+                        return OnGetAllWellData(context, method, inputArguments, outputArguments);
+
+                    case "ClearWellData":
+                        return OnClearWellData(context, method, inputArguments, outputArguments);
+
                     default:
                         return StatusCodes.BadMethodInvalid;
                 }
@@ -4128,6 +4288,96 @@ namespace TecanOpcUa
             catch (Exception ex)
             {
                 Console.WriteLine($"Error in OnPerformLuminescenceMeasurement: {ex.Message}");
+                return new ServiceResult(ex);
+            }
+        }
+
+        // GetWellData method implementation
+        private ServiceResult OnGetWellData(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
+        {
+            try
+            {
+                // Check if we have the right number of input arguments
+                if (inputArguments.Count != 1)
+                {
+                    return StatusCodes.BadArgumentsMissing;
+                }
+
+                // Get the well position
+                string wellPosition = inputArguments[0].ToString();
+
+                // Get the well data
+                double? value = _measurementOperations.GetWellData(wellPosition);
+
+                // Set the output arguments
+                if (value.HasValue)
+                {
+                    outputArguments[0] = value.Value;
+                    outputArguments[1] = true;
+                }
+                else
+                {
+                    outputArguments[0] = 0.0;
+                    outputArguments[1] = false;
+                }
+
+                return StatusCodes.Good;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in OnGetWellData: {ex.Message}");
+                return new ServiceResult(ex);
+            }
+        }
+
+        // GetAllWellData method implementation
+        private ServiceResult OnGetAllWellData(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
+        {
+            try
+            {
+                // Get all well data
+                Dictionary<string, double> wellData = _measurementOperations.GetAllWellData();
+
+                // Convert to JSON string
+                StringBuilder sb = new StringBuilder();
+                sb.Append("{");
+                bool first = true;
+                foreach (var kvp in wellData)
+                {
+                    if (!first)
+                    {
+                        sb.Append(",");
+                    }
+                    sb.Append($"\"{kvp.Key}\":{kvp.Value}");
+                    first = false;
+                }
+                sb.Append("}");
+
+                // Set the output argument
+                outputArguments[0] = sb.ToString();
+
+                return StatusCodes.Good;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in OnGetAllWellData: {ex.Message}");
+                return new ServiceResult(ex);
+            }
+        }
+
+        // ClearWellData method implementation
+        private ServiceResult OnClearWellData(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
+        {
+            try
+            {
+                // Clear all well data
+                _measurementOperations.ClearWellData();
+
+                return StatusCodes.Good;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in OnClearWellData: {ex.Message}");
                 return new ServiceResult(ex);
             }
         }
