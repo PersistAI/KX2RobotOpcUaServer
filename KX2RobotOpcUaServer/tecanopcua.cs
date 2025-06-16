@@ -347,6 +347,237 @@ namespace TecanOpcUa
                 nMax = 420; // Default max 42.0°C
             }
         }
+
+        /// <summary>
+        /// Get the common defintions from the instrument definitions
+        /// </summary>
+        public CommonDef GetCommonDefs()
+        {
+            if (ReaderDefinition != null)
+            {
+                return ReaderDefinition.CommonDef;
+            }
+            return null;
+        }
+
+        #region Creation Helpers
+
+        /// <summary>
+        /// Creates a TecanFile with proper metadata
+        /// </summary>
+        public static TecanFile CreateTecanFile()
+        {
+            TecanFile oFile = new TecanFile();
+            oFile.FileFormat = "Tecan.At.Measurement";
+            oFile.FileVersion = "1.0";
+
+            oFile.TecanFileInfo = new Tecan.At.Common.DocumentManagement.FileInfo();
+            oFile.TecanFileInfo.InfoCreatedFrom = "TecanOpcUa";
+            oFile.TecanFileInfo.InfoCreatedAt = DateTime.Now;
+            oFile.TecanFileInfo.InfoCreatedWith = "TecanOpcUa";
+            oFile.TecanFileInfo.InfoDescription = "Measurement created via OPC UA";
+            oFile.TecanFileInfo.InfoType = "";
+            oFile.TecanFileInfo.InfoVersion = "1.0";
+
+            return oFile;
+        }
+
+        /// <summary>
+        /// Creates a TecanMeasurement with ID
+        /// </summary>
+        public static TecanMeasurement CreateTecanMeasurement(int nID)
+        {
+            TecanMeasurement oMeasurement = new TecanMeasurement();
+            oMeasurement.ID = nID;
+            oMeasurement.MeasurementClass = "Measurement";
+
+            return oMeasurement;
+        }
+
+        /// <summary>
+        /// Creates a MeasurementManualCycle
+        /// </summary>
+        public static MeasurementManualCycle CreateManualCycle(int nID)
+        {
+            MeasurementManualCycle oCycle = new MeasurementManualCycle();
+            oCycle.CycleType = CycleType.Standard;
+            oCycle.Number = 1;
+            oCycle.ID = nID;
+
+            return oCycle;
+        }
+
+        /// <summary>
+        /// Creates a CyclePlate with name and ID
+        /// </summary>
+        public static CyclePlate CreatePlate(string sName, int nID)
+        {
+            CyclePlate oPlate = new CyclePlate();
+            oPlate.PlateName = sName;
+            oPlate.ID = nID;
+
+            return oPlate;
+        }
+
+        /// <summary>
+        /// Creates a PlateRange with range string and ID
+        /// </summary>
+        public static PlateRange CreateRange(string sRange, int nID)
+        {
+            PlateRange oRange = new PlateRange();
+            oRange.Range = sRange;
+            oRange.Auto = true;
+            oRange.ID = nID;
+
+            return oRange;
+        }
+
+        /// <summary>
+        /// Creates a Well with ID
+        /// </summary>
+        public static Well CreateWell(int nID)
+        {
+            Well oWell = new Well();
+            oWell.ID = nID;
+
+            return oWell;
+        }
+
+        #endregion Creation Helpers
+
+        #region Well selection Helpers
+
+        
+        #endregion Well selection Helpers
+
+        #region Query Script Helpers
+
+        /// <summary>
+        /// Gets the plate name from a script
+        /// </summary>
+        public string GetPlate(IItemList iList)
+        {
+            CyclePlate oPlate = QueryNode(iList, typeof(CyclePlate)) as CyclePlate;
+            if (oPlate != null)
+            {
+                return oPlate.PlateName;
+            }
+            return "";
+        }
+
+        /// <summary>
+        /// Gets the well range from a script
+        /// </summary>
+        public string GetRange(IItemList iList)
+        {
+            PlateRange oRange = QueryNode(iList, typeof(PlateRange)) as PlateRange;
+            if (oRange != null)
+            {
+                return oRange.Range;
+            }
+            return "";
+        }
+
+        /// <summary>
+        /// Gets the kinetic loop count from a script
+        /// </summary>
+        public string GetKinetic(IItemList iList)
+        {
+            MeasurementKinetic oKinetic = QueryNode(iList, typeof(MeasurementKinetic)) as MeasurementKinetic;
+            if (oKinetic != null)
+            {
+                return oKinetic.NrOfLoops.ToString();
+            }
+            return "";
+        }
+
+        /// <summary>
+        /// Gets the wavelength information from a script
+        /// </summary>
+        public string GetWavelength(IItemList iList)
+        {
+            MeasurementReading oReading = QueryNode(iList, typeof(MeasurementReading)) as MeasurementReading;
+            if (oReading != null)
+            {
+                foreach (ReadingLabel oLabel in oReading.ReadingLabels)
+                {
+                    string sFilter = "";
+                    ReadingFilter oExFilter = oLabel.ExFilter;
+                    if (oExFilter != null)
+                    {
+                        sFilter = "Ex: ";
+                        sFilter += "Wavelength = " + oExFilter.Wavelength.ToString() + ", ";
+                        sFilter += "Bandwidth = " + oExFilter.Bandwidth.ToString();
+                    }
+                    ReadingFilter oEmFilter = oLabel.EmFilter;
+                    if (oEmFilter != null)
+                    {
+                        sFilter += "; ";
+                        sFilter += "Em: ";
+                        sFilter += "Wavelength = " + oEmFilter.Wavelength.ToString() + ", ";
+                        sFilter += "Bandwidth = " + oEmFilter.Bandwidth.ToString();
+                    }
+                    return sFilter;
+                }
+            }
+            return "";
+        }
+
+        /// <summary>
+        /// Gets the measurement mode from a script
+        /// </summary>
+        public string GetMeasurementMode(IItemList iList)
+        {
+            RangeMeasurement oMeas = QueryNode(iList, typeof(RangeMeasurement)) as RangeMeasurement;
+            if (oMeas != null)
+            {
+                string sType = "";
+                if (oMeas.GetType() == typeof(MeasurementFluoInt))
+                {
+                    sType = "Fluorescence";
+                }
+                else if (oMeas.GetType() == typeof(MeasurementFluoPol))
+                {
+                    sType = "Fluorescence Polarization";
+                }
+                else if (oMeas.GetType() == typeof(MeasurementAbsorbance))
+                {
+                    sType = "Absorbance";
+                }
+                else if (oMeas.GetType() == typeof(MeasurementLuminescence))
+                {
+                    sType = "Luminescence";
+                }
+                else
+                {
+                    sType = "Unknown";
+                }
+                return sType;
+            }
+            return "";
+        }
+
+        /// <summary>
+        /// Helper method to query nodes in a script
+        /// </summary>
+        private IItemList QueryNode(IItemList iList, Type oTypeToFind)
+        {
+            foreach (object o in iList.Actions)
+            {
+                IItemList iList2 = o as IItemList;
+                if (iList2 != null)
+                {
+                    if (iList2.GetType() == oTypeToFind || iList2.GetType().BaseType == oTypeToFind)
+                    {
+                        return iList2;
+                    }
+                    return QueryNode(iList2, oTypeToFind);
+                }
+            }
+            return null;
+        }
+
+        #endregion Query Script Helpers
     }
 
     /// <summary>
@@ -554,8 +785,22 @@ namespace TecanOpcUa
                         // Create a GUID for this measurement run
                         _currentMeasurementGuid = Guid.NewGuid();
 
+                        // First convert the TecanFile to XML string and back to ensure proper XML structure
+                        // This is CRITICAL - the sample application does this conversion before passing to the measurement server
+                        XmlSupport objXML = new XmlSupport();
+                        XmlNode objNode = measurementScript.GetXmlNode(objXML);
+                        objXML.AddXmlNode(objNode);
+                        string xmlString = objXML.XmlDocumentAsString();
+
+                        // Now convert back to TecanFile object
+                        TecanFile processedTecanFile = FileHandling.LoadXml(xmlString) as TecanFile;
+                        if (processedTecanFile == null)
+                        {
+                            throw new InvalidOperationException("Failed to convert TecanFile to XML and back");
+                        }
+
                         // Set script to measurement server
-                        _tecan._measurementServer.ActionsAsObjects = measurementScript;
+                        _tecan._measurementServer.ActionsAsObjects = processedTecanFile;
 
                         // Setup the output mechanism (critical for measurement execution)
                         SetupOutput(_tecan._measurementServer, measurementScript);
@@ -684,11 +929,25 @@ namespace TecanOpcUa
                         // Create a GUID for this measurement run
                         _currentMeasurementGuid = Guid.NewGuid();
 
+                        // First convert the TecanFile to XML string and back to ensure proper XML structure
+                        // This is CRITICAL - the sample application does this conversion before passing to the measurement server
+                        XmlSupport objXML = new XmlSupport();
+                        XmlNode objNode = measurementScript.GetXmlNode(objXML);
+                        objXML.AddXmlNode(objNode);
+                        string xmlString = objXML.XmlDocumentAsString();
+
+                        // Now convert back to TecanFile object
+                        TecanFile processedTecanFile = FileHandling.LoadXml(xmlString) as TecanFile;
+                        if (processedTecanFile == null)
+                        {
+                            throw new InvalidOperationException("Failed to convert TecanFile to XML and back");
+                        }
+
                         // Set script to measurement server
-                        _tecan._measurementServer.ActionsAsObjects = measurementScript;
+                        _tecan._measurementServer.ActionsAsObjects = processedTecanFile;
 
                         // Setup the output mechanism (critical for measurement execution)
-                        SetupOutput(_tecan._measurementServer, measurementScript);
+                        SetupOutput(_tecan._measurementServer, processedTecanFile);
 
                         // Configure in-process messaging (critical for measurement execution)
                         _tecan._measurementServer.UseInprocMessagingService = true;
@@ -795,11 +1054,25 @@ namespace TecanOpcUa
                         // Create a GUID for this measurement run
                         _currentMeasurementGuid = Guid.NewGuid();
 
+                        // First convert the TecanFile to XML string and back to ensure proper XML structure
+                        // This is CRITICAL - the sample application does this conversion before passing to the measurement server
+                        XmlSupport objXML = new XmlSupport();
+                        XmlNode objNode = measurementScript.GetXmlNode(objXML);
+                        objXML.AddXmlNode(objNode);
+                        string xmlString = objXML.XmlDocumentAsString();
+
+                        // Now convert back to TecanFile object
+                        TecanFile processedTecanFile = FileHandling.LoadXml(xmlString) as TecanFile;
+                        if (processedTecanFile == null)
+                        {
+                            throw new InvalidOperationException("Failed to convert TecanFile to XML and back");
+                        }
+
                         // Set script to measurement server
-                        _tecan._measurementServer.ActionsAsObjects = measurementScript;
+                        _tecan._measurementServer.ActionsAsObjects = processedTecanFile;
 
                         // Setup the output mechanism (critical for measurement execution)
-                        SetupOutput(_tecan._measurementServer, measurementScript);
+                        SetupOutput(_tecan._measurementServer, processedTecanFile);
 
                         // Configure in-process messaging (critical for measurement execution)
                         _tecan._measurementServer.UseInprocMessagingService = true;
