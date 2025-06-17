@@ -1166,47 +1166,44 @@ namespace TecanOpcUa
                 // Create well
                 Well oWell = CreateWell(++nID);
 
-                // Create measurement reading with proper settings
-                MeasurementReading oMeasurementReading = new MeasurementReading();
-                oMeasurementReading.ID = ++nID;
-                oMeasurementReading.BeamDiameter = 700; // Set to 700 to match sample app
-                oMeasurementReading.BeamGridType = BeamGridType.Single;
-                oMeasurementReading.BeamGridSize = 1;
-                oMeasurementReading.BeamEdgeDistance = "auto";
+                // Build measurement script for absorbance with values entered by user
+                MeasurementReading objMeasurementReading = new MeasurementReading();
+                objMeasurementReading.ID = ++nID;
 
-                // Create reading label with proper parameters
-                ReadingLabel oReadingLabel = new ReadingLabel();
-                oReadingLabel.ID = ++nID;
-                oReadingLabel.Name = labelName;
-                oReadingLabel.ScanType = ScanMode.ScanFixed;
+                // Set the right beam
+                objMeasurementReading.BeamDiameter = 700; // Default beam size from sample app
+                objMeasurementReading.BeamGridType = BeamGridType.Single;
+                objMeasurementReading.BeamGridSize = 1;
+                objMeasurementReading.BeamEdgeDistance = "auto";
 
-                // Create settings with proper values
-                ReadingSettings oSettings = new ReadingSettings();
-                oSettings.Number = numberOfReads;
-                oSettings.Rate = 25000; // Default rate from sample app
+                ReadingLabel objReadingLabel = new ReadingLabel();
+                objReadingLabel.ID = ++nID;
+                objReadingLabel.Name = labelName;
+                objReadingLabel.ScanType = ScanMode.ScanFixed;
 
-                // Create timing with proper values
-                ReadingTime oReadingTime = new ReadingTime();
-                oReadingTime.ReadDelay = settleTime;
-                oReadingTime.Flash = 0;
-                oReadingTime.Dark = 0;
-                oReadingTime.ExcitationTime = 0;
-                oReadingTime.IntegrationTime = 0;
-                oReadingTime.LagTime = 0;
+                ReadingSettings objSettings = new ReadingSettings();
+                objSettings.Number = numberOfReads;
+                objSettings.Rate = 25000; // Default rate from sample app
 
-                // Create filter with proper values and constants
-                ReadingFilter oFilter = new ReadingFilter();
-                oFilter.Wavelength = (wavelength * 10).ToString(); // Multiply by 10 to match format
-                oFilter.Bandwidth = "50";      // Default bandwidth (5.0 nm)
-                oFilter.Usage = "Absorbance";  // Use string constant to match sample app
-                oFilter.Type = "Ex";           // Use string constant to match sample app
+                ReadingTime objReadingTime = new ReadingTime();
+                objReadingTime.ReadDelay = settleTime;
+
+                ReadingFilter objFilter = new ReadingFilter();
+                objFilter.Wavelength = (wavelength * 10).ToString();
+                objFilter.Bandwidth = "50"; // Default bandwidth (5.0 nm)
+                objFilter.Usage = "Absorbance";
+                objFilter.Type = "Ex";
+
+                // For non-monochromator devices
+                objFilter.Attenuation = "0";
+
+                objReadingLabel.Timing = objReadingTime;
+                objReadingLabel.Settings = objSettings;
+                objReadingLabel.ExFilter = objFilter;
+                objMeasurementReading.Actions.Add(objReadingLabel);
 
                 // Assemble the objects with proper hierarchy
-                oReadingLabel.Timing = oReadingTime;
-                oReadingLabel.Settings = oSettings;
-                oReadingLabel.ExFilter = oFilter;
-                oMeasurementReading.Actions.Add(oReadingLabel);
-                oWell.Actions.Add(oMeasurementReading);
+                oWell.Actions.Add(objMeasurementReading);
                 oAbsMeas.Actions.Add(oWell);
                 oRange.Actions.Add(oAbsMeas);
                 oPlate.Actions.Add(oRange);
