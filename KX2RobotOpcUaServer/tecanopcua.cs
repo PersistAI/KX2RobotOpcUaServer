@@ -629,9 +629,9 @@ namespace TecanOpcUa
                 objReadingTime.ReadDelay = settleTime;
 
                 ReadingFilter objFilter = new ReadingFilter();
-                objFilter.Wavelength = wavelength.ToString();
+                objFilter.Wavelength = (wavelength * 10).ToString(); // Multiply by 10 to match format expected by device
                 objFilter.Bandwidth = "50"; // Default bandwidth (5.0 nm)
-                objFilter.Usage = "Absorbance";
+                objFilter.Usage = MEASMODE.Absorbance; // Use the constant instead of string
                 objFilter.Type = "Ex";
 
                 // For non-monochromator devices
