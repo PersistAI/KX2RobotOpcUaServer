@@ -35,59 +35,10 @@ namespace TecanOpcUa
     /// </summary>
     public static class MeasMode
     {
-        public static class Lumi
-        {
-            public const String Fixed = "LUM.FIXED";
-        }
-
         public static class Abs
         {
             public const String Fixed = "ABS.FIXED";
             public const String Scan = "ABS.SCAN";
-            public const String Cuv = "ABS.CUV";
-        }
-
-        public static class FI
-        {
-            public static class Top
-            {
-                public const String Fixed = "FI.TOP.FIXED";
-                public const String ExScan = "FI.TOP.EXSCAN";
-                public const String EmScan = "FI.TOP.EMSCAN";
-            }
-
-            public static class Bottom
-            {
-                public const String Fixed = "FI.BOTTOM.FIXED";
-                public const String ExScan = "FI.BOTTOM.EXSCAN";
-                public const String EmScan = "FI.BOTTOM.EMSCAN";
-            }
-        }
-
-        public static class Pol
-        {
-            public const String Fixed = "POL";
-        }
-
-        public static class Cuvette
-        {
-            public const String Fixed = "CUVETTE.FIXED";
-            public const String Scan = "CUVETTE.SCAN";
-        }
-    }
-
-    /// <summary>
-    /// Constants for filter usage
-    /// </summary>
-    public static class FilterUsage
-    {
-        public const string Ex = "Ex";
-        public const string Em = "Em";
-
-        public static class LUM
-        {
-            public const string OD = "OD";
-            public const string Empty = "Empty";
         }
     }
 
@@ -97,8 +48,6 @@ namespace TecanOpcUa
     public static class MeasMode2
     {
         public const string Absorbance = "Absorbance";
-        public const string Fluorescence = "Fluorescence";
-        public const string Luminescence = "Luminescence";
     }
 
     /// <summary>
@@ -111,22 +60,6 @@ namespace TecanOpcUa
         public IReader Reader { get; set; }
 
         // Device capability methods
-        public bool HasLuminescenceFixed()
-        {
-            try
-            {
-                if (Reader != null && Reader.ReaderCapabilities != null)
-                {
-                    return Reader.ReaderCapabilities.HasLuminescenceFixed();
-                }
-                return false;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in HasLuminescenceFixed: {ex.Message}");
-                return false;
-            }
-        }
 
         public bool HasAbsorbanceFixed()
         {
@@ -141,23 +74,6 @@ namespace TecanOpcUa
             catch (Exception ex)
             {
                 Console.WriteLine($"Error in HasAbsorbanceFixed: {ex.Message}");
-                return false;
-            }
-        }
-
-        public bool HasCuvette()
-        {
-            try
-            {
-                if (Reader != null && Reader.ReaderCapabilities != null)
-                {
-                    return Reader.ReaderCapabilities.HasCuvette();
-                }
-                return false;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in HasCuvette: {ex.Message}");
                 return false;
             }
         }
@@ -177,187 +93,6 @@ namespace TecanOpcUa
                 Console.WriteLine($"Error in HasAbsorbanceScan: {ex.Message}");
                 return false;
             }
-        }
-
-        public bool HasFluoresenceFixed()
-        {
-            try
-            {
-                if (Reader != null && Reader.ReaderCapabilities != null)
-                {
-                    return Reader.ReaderCapabilities.HasFluoresenceFixed();
-                }
-                return false;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in HasFluoresenceFixed: {ex.Message}");
-                return false;
-            }
-        }
-
-        public bool HasFluoresenceScan()
-        {
-            try
-            {
-                if (Reader != null && Reader.ReaderCapabilities != null)
-                {
-                    return Reader.ReaderCapabilities.HasFluoresenceScan();
-                }
-                return false;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in HasFluoresenceScan: {ex.Message}");
-                return false;
-            }
-        }
-
-        public bool HasFluorescencePolarization()
-        {
-            try
-            {
-                if (Reader != null && Reader.ReaderCapabilities != null)
-                {
-                    return Reader.ReaderCapabilities.HasFluorescencePolarization();
-                }
-                return false;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in HasFluorescencePolarization: {ex.Message}");
-                return false;
-            }
-        }
-
-        public bool HasHeating()
-        {
-            try
-            {
-                if (Reader != null && Reader.ReaderCapabilities != null)
-                {
-                    return Reader.ReaderCapabilities.HasHeating();
-                }
-                return false;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in HasHeating: {ex.Message}");
-                return false;
-            }
-        }
-
-        public bool HasShaking()
-        {
-            try
-            {
-                if (Reader != null && Reader.ReaderCapabilities != null)
-                {
-                    return Reader.ReaderCapabilities.HasShaking();
-                }
-                return false;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in HasShaking: {ex.Message}");
-                return false;
-            }
-        }
-
-        public bool HasInjection()
-        {
-            try
-            {
-                if (Reader != null && Reader.ReaderCapabilities != null)
-                {
-                    return Reader.ReaderCapabilities.HasInjection();
-                }
-                return false;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in HasInjection: {ex.Message}");
-                return false;
-            }
-        }
-
-        public bool HasBarcode()
-        {
-            try
-            {
-                if (ReaderDefinition != null && ReaderDefinition.CommonDef != null && ReaderDefinition.CommonDef.Functions != null)
-                {
-                    return ReaderDefinition.CommonDef.GetFunctionList().IsAvailable(FUNCTION.Barcode);
-                }
-                return false;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in HasBarcode: {ex.Message}");
-                return false;
-            }
-        }
-
-        public bool IsMonochromator()
-        {
-            try
-            {
-                if (Reader != null && Reader.ReaderCapabilities != null)
-                {
-                    return Reader.ReaderCapabilities.IsMonochromator();
-                }
-                return false;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in IsMonochromator: {ex.Message}");
-                return false;
-            }
-        }
-
-        public void GetTemperatureRange(ref int nMin, ref int nMax)
-        {
-            try
-            {
-                if (ReaderDefinition != null && ReaderDefinition.TemperatureDef != null)
-                {
-                    string sResult;
-                    if (ReaderDefinition.TemperatureDef.TemperatureTargetDef.TryGetValue(TEMPERATURE.Plate, out sResult) == true)
-                    {
-                        NumRange oRange = new NumRange(sResult);
-                        nMin = oRange.Min;
-                        nMax = oRange.Max;
-                    }
-                    else
-                    {
-                        nMin = 0;
-                        nMax = 420; // Default max 42.0°C
-                    }
-                }
-                else
-                {
-                    nMin = 0;
-                    nMax = 420; // Default max 42.0°C
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in GetTemperatureRange: {ex.Message}");
-                nMin = 0;
-                nMax = 420; // Default max 42.0°C
-            }
-        }
-
-        /// <summary>
-        /// Get the common defintions from the instrument definitions
-        /// </summary>
-        public CommonDef GetCommonDefs()
-        {
-            if (ReaderDefinition != null)
-            {
-                return ReaderDefinition.CommonDef;
-            }
-            return null;
         }
 
         #region Creation Helpers
@@ -443,14 +178,6 @@ namespace TecanOpcUa
             return oWell;
         }
 
-        #endregion Creation Helpers
-
-        #region Well selection Helpers
-
-
-        #endregion Well selection Helpers
-
-        #region Query Script Helpers
 
         /// <summary>
         /// Gets the plate name from a script
@@ -532,21 +259,9 @@ namespace TecanOpcUa
             if (oMeas != null)
             {
                 string sType = "";
-                if (oMeas.GetType() == typeof(MeasurementFluoInt))
-                {
-                    sType = "Fluorescence";
-                }
-                else if (oMeas.GetType() == typeof(MeasurementFluoPol))
-                {
-                    sType = "Fluorescence Polarization";
-                }
-                else if (oMeas.GetType() == typeof(MeasurementAbsorbance))
+                if (oMeas.GetType() == typeof(MeasurementAbsorbance))
                 {
                     sType = "Absorbance";
-                }
-                else if (oMeas.GetType() == typeof(MeasurementLuminescence))
-                {
-                    sType = "Luminescence";
                 }
                 else
                 {
@@ -635,7 +350,7 @@ namespace TecanOpcUa
         public string Id { get; set; }
 
         /// <summary>
-        /// The type of measurement (Absorbance, Fluorescence, Luminescence)
+        /// The type of measurement (Absorbance)
         /// </summary>
         public string MeasurementType { get; set; }
 
@@ -785,9 +500,6 @@ namespace TecanOpcUa
                         // Ensure plate is in
                         _tecan.MovePlateIn();
 
-                        // Clear any previous measurement data
-                        ClearWellData();
-
                         // Create a GUID for this measurement run
                         _currentMeasurementGuid = Guid.NewGuid();
 
@@ -858,278 +570,6 @@ namespace TecanOpcUa
             }
         }
 
-        /// <summary>
-        /// Performs a fluorescence measurement
-        /// </summary>
-        /// <param name="plateType">The plate type to use</param>
-        /// <param name="wellRange">The well range to measure (e.g., "A1:H12")</param>
-        /// <param name="excitationWavelength">The excitation wavelength in nm</param>
-        /// <param name="emissionWavelength">The emission wavelength in nm</param>
-        /// <param name="gain">The gain value</param>
-        /// <param name="numberOfFlashes">The number of flashes</param>
-        /// <param name="integrationTime">The integration time in μs</param>
-        /// <param name="settleTime">The settle time in ms</param>
-        /// <param name="readingMode">The reading mode (Top or Bottom)</param>
-        /// <returns>The measurement result object</returns>
-        public MeasurementResult PerformFluorescenceMeasurement(
-            string plateType,
-            string wellRange,
-            int excitationWavelength,
-            int emissionWavelength,
-            int gain,
-            int numberOfFlashes,
-            int integrationTime,
-            int settleTime,
-            string readingMode)
-        {
-            if (!_tecan.IsConnected())
-                throw new InvalidOperationException("Not connected to a Tecan device");
-
-            if (_tecan._helper == null || !_tecan._helper.HasFluoresenceFixed())
-                throw new InvalidOperationException("Device does not support fluorescence measurements");
-
-            try
-            {
-                Console.WriteLine($"Performing fluorescence measurement with parameters: plateType={plateType}, wellRange={wellRange}, " +
-                    $"excitationWavelength={excitationWavelength}, emissionWavelength={emissionWavelength}, gain={gain}, " +
-                    $"numberOfFlashes={numberOfFlashes}, integrationTime={integrationTime}, settleTime={settleTime}, readingMode={readingMode}");
-
-                // Create a measurement result object
-                MeasurementResult result = new MeasurementResult
-                {
-                    MeasurementType = "Fluorescence",
-                    PlateType = plateType,
-                    WellRange = wellRange,
-                    Parameters = new Dictionary<string, string>
-                    {
-                        { "ExcitationWavelength", excitationWavelength.ToString() },
-                        { "EmissionWavelength", emissionWavelength.ToString() },
-                        { "Gain", gain.ToString() },
-                        { "NumberOfFlashes", numberOfFlashes.ToString() },
-                        { "IntegrationTime", integrationTime.ToString() },
-                        { "SettleTime", settleTime.ToString() },
-                        { "ReadingMode", readingMode }
-                    }
-                };
-
-                if (_tecan._measurementServer != null && _tecan._measurementServer.ConnectedReader != null)
-                {
-                    try
-                    {
-                        // Generate the measurement script
-                        TecanFile measurementScript = GenerateFluorescenceScript(
-                            plateType,
-                            wellRange,
-                            excitationWavelength,
-                            emissionWavelength,
-                            gain,
-                            numberOfFlashes,
-                            integrationTime,
-                            settleTime,
-                            readingMode,
-                            "Fluorescence_" + result.Id);
-
-                        // Ensure plate is in
-                        _tecan.MovePlateIn();
-
-                        // Clear any previous measurement data
-                        ClearWellData();
-
-                        // Create a GUID for this measurement run
-                        _currentMeasurementGuid = Guid.NewGuid();
-
-                        // First convert the TecanFile to XML string and back to ensure proper XML structure
-                        // This is CRITICAL - the sample application does this conversion before passing to the measurement server
-                        XmlSupport objXML = new XmlSupport();
-                        XmlNode objNode = measurementScript.GetXmlNode(objXML);
-                        objXML.AddXmlNode(objNode);
-                        string xmlString = objXML.XmlDocumentAsString();
-
-                        // Now convert back to TecanFile object
-                        TecanFile processedTecanFile = FileHandling.LoadXml(xmlString) as TecanFile;
-                        if (processedTecanFile == null)
-                        {
-                            throw new InvalidOperationException("Failed to convert TecanFile to XML and back");
-                        }
-
-                        // Set script to measurement server
-                        _tecan._measurementServer.ActionsAsObjects = processedTecanFile;
-
-                        // Setup the output mechanism (critical for measurement execution)
-                        SetupOutput(_tecan._measurementServer, processedTecanFile);
-
-                        // Configure in-process messaging (critical for measurement execution)
-                        _tecan._measurementServer.UseInprocMessagingService = true;
-
-                        // Start the measurement
-                        _tecan._measurementServer.NewRunState(_currentMeasurementGuid);
-                        _tecan._measurementServer.Run(_currentMeasurementGuid);
-
-                        // Wait for measurement to complete with proper message processing
-                        WaitForMeasurementCompletion(30000);  // 30 second timeout
-
-                        // Stop the output mechanism
-                        StopOutput();
-
-                        // Generate a result file path
-                        string resultFilePath = Path.Combine(
-                            _outputFolder,
-                            $"Fluorescence_{DateTime.Now:yyyyMMdd_HHmmss}_{result.Id}.xml");
-
-                        result.ResultFilePath = resultFilePath;
-
-                        // Add to results list
-                        _measurementResults.Add(result);
-
-                        Console.WriteLine($"Fluorescence measurement completed. Result ID: {result.Id}");
-                        return result;
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Error during measurement execution: {ex.Message}");
-                        Console.WriteLine($"Stack trace: {ex.StackTrace}");
-                        throw;
-                    }
-                }
-                else
-                {
-                    throw new InvalidOperationException("Measurement server not initialized");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error performing fluorescence measurement: {ex.Message}");
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// Performs a luminescence measurement
-        /// </summary>
-        /// <param name="plateType">The plate type to use</param>
-        /// <param name="wellRange">The well range to measure (e.g., "A1:H12")</param>
-        /// <param name="integrationTime">The integration time in ms</param>
-        /// <param name="settleTime">The settle time in ms</param>
-        /// <param name="attenuation">The attenuation filter to use</param>
-        /// <returns>The measurement result object</returns>
-        public MeasurementResult PerformLuminescenceMeasurement(
-            string plateType,
-            string wellRange,
-            int integrationTime,
-            int settleTime,
-            string attenuation)
-        {
-            if (!_tecan.IsConnected())
-                throw new InvalidOperationException("Not connected to a Tecan device");
-
-            if (_tecan._helper == null || !_tecan._helper.HasLuminescenceFixed())
-                throw new InvalidOperationException("Device does not support luminescence measurements");
-
-            try
-            {
-                Console.WriteLine($"Performing luminescence measurement with parameters: plateType={plateType}, wellRange={wellRange}, " +
-                    $"integrationTime={integrationTime}, settleTime={settleTime}, attenuation={attenuation}");
-
-                // Create a measurement result object
-                MeasurementResult result = new MeasurementResult
-                {
-                    MeasurementType = "Luminescence",
-                    PlateType = plateType,
-                    WellRange = wellRange,
-                    Parameters = new Dictionary<string, string>
-                    {
-                        { "IntegrationTime", integrationTime.ToString() },
-                        { "SettleTime", settleTime.ToString() },
-                        { "Attenuation", attenuation }
-                    }
-                };
-
-                if (_tecan._measurementServer != null && _tecan._measurementServer.ConnectedReader != null)
-                {
-                    try
-                    {
-                        // Generate the measurement script
-                        TecanFile measurementScript = GenerateLuminescenceScript(
-                            plateType,
-                            wellRange,
-                            integrationTime,
-                            settleTime,
-                            attenuation,
-                            "Luminescence_" + result.Id);
-
-                        // Ensure plate is in
-                        _tecan.MovePlateIn();
-
-                        // Clear any previous measurement data
-                        ClearWellData();
-
-                        // Create a GUID for this measurement run
-                        _currentMeasurementGuid = Guid.NewGuid();
-
-                        // First convert the TecanFile to XML string and back to ensure proper XML structure
-                        // This is CRITICAL - the sample application does this conversion before passing to the measurement server
-                        XmlSupport objXML = new XmlSupport();
-                        XmlNode objNode = measurementScript.GetXmlNode(objXML);
-                        objXML.AddXmlNode(objNode);
-                        string xmlString = objXML.XmlDocumentAsString();
-
-                        // Now convert back to TecanFile object
-                        TecanFile processedTecanFile = FileHandling.LoadXml(xmlString) as TecanFile;
-                        if (processedTecanFile == null)
-                        {
-                            throw new InvalidOperationException("Failed to convert TecanFile to XML and back");
-                        }
-
-                        // Set script to measurement server
-                        _tecan._measurementServer.ActionsAsObjects = processedTecanFile;
-
-                        // Setup the output mechanism (critical for measurement execution)
-                        SetupOutput(_tecan._measurementServer, processedTecanFile);
-
-                        // Configure in-process messaging (critical for measurement execution)
-                        _tecan._measurementServer.UseInprocMessagingService = true;
-
-                        // Start the measurement
-                        _tecan._measurementServer.NewRunState(_currentMeasurementGuid);
-                        _tecan._measurementServer.Run(_currentMeasurementGuid);
-
-                        // Wait for measurement to complete with proper message processing
-                        WaitForMeasurementCompletion(30000);  // 30 second timeout
-
-                        // Stop the output mechanism
-                        StopOutput();
-
-                        // Generate a result file path
-                        string resultFilePath = Path.Combine(
-                            _outputFolder,
-                            $"Luminescence_{DateTime.Now:yyyyMMdd_HHmmss}_{result.Id}.xml");
-
-                        result.ResultFilePath = resultFilePath;
-
-                        // Add to results list
-                        _measurementResults.Add(result);
-
-                        Console.WriteLine($"Luminescence measurement completed. Result ID: {result.Id}");
-                        return result;
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Error during measurement execution: {ex.Message}");
-                        Console.WriteLine($"Stack trace: {ex.StackTrace}");
-                        throw;
-                    }
-                }
-                else
-                {
-                    throw new InvalidOperationException("Measurement server not initialized");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error performing luminescence measurement: {ex.Message}");
-                throw;
-            }
-        }
 
         /// <summary>
         /// Generates a script for absorbance measurement
@@ -1244,263 +684,6 @@ namespace TecanOpcUa
             }
         }
 
-        /// <summary>
-        /// Generates a script for fluorescence measurement
-        /// </summary>
-        private TecanFile GenerateFluorescenceScript(
-            string plateName,
-            string wellRange,
-            int excitationWavelength,
-            int emissionWavelength,
-            int gain,
-            int numberOfReads,
-            int integrationTime,
-            int settleTime,
-            string readingMode,
-            string labelName)
-        {
-            try
-            {
-                Console.WriteLine($"Generating fluorescence script with parameters: plateType={plateName}, wellRange={wellRange}, " +
-                    $"excitationWavelength={excitationWavelength}, emissionWavelength={emissionWavelength}, gain={gain}, " +
-                    $"numberOfReads={numberOfReads}, integrationTime={integrationTime}, settleTime={settleTime}, readingMode={readingMode}");
-
-                // Create a new TecanFile with proper structure
-                int nID = 0;
-                TecanFile oFile = CreateTecanFile();
-                TecanMeasurement oMeasurement = CreateTecanMeasurement(++nID);
-                MeasurementManualCycle oCycle = CreateManualCycle(++nID);
-
-                // Set plate
-                CyclePlate oPlate = CreatePlate(plateName, ++nID);
-
-                // Set well range
-                PlateRange oRange = CreateRange(wellRange, ++nID);
-
-                // Create fluorescence measurement
-                MeasurementFluoInt oFluoMeas = new MeasurementFluoInt();
-                oFluoMeas.Name = "FLUO";
-                oFluoMeas.ID = ++nID;
-
-                // Convert string readingMode to ReadingMode enum
-                if (readingMode.Equals("Top", StringComparison.OrdinalIgnoreCase))
-                {
-                    oFluoMeas.ReadingMode = Tecan.At.Common.DocumentManagement.ReadingMode.Top;
-                }
-                else if (readingMode.Equals("Bottom", StringComparison.OrdinalIgnoreCase))
-                {
-                    oFluoMeas.ReadingMode = Tecan.At.Common.DocumentManagement.ReadingMode.Bottom;
-                }
-                else
-                {
-                    // Default to Top if not recognized
-                    oFluoMeas.ReadingMode = Tecan.At.Common.DocumentManagement.ReadingMode.Top;
-                    Console.WriteLine($"Warning: Unrecognized reading mode '{readingMode}', defaulting to Top");
-                }
-
-                // Create well
-                Well oWell = CreateWell(++nID);
-
-                // Create measurement reading
-                MeasurementReading oMeasurementReading = new MeasurementReading();
-                oMeasurementReading.ID = ++nID;
-                oMeasurementReading.BeamDiameter = 700; // Default beam diameter
-                oMeasurementReading.BeamGridType = BeamGridType.Single;
-                oMeasurementReading.BeamGridSize = 1;
-                oMeasurementReading.BeamEdgeDistance = "auto";
-
-                // Create reading label
-                ReadingLabel oReadingLabel = new ReadingLabel();
-                oReadingLabel.ID = ++nID;
-                oReadingLabel.Name = labelName;
-                oReadingLabel.ScanType = ScanMode.ScanFixed;
-
-                // Create settings
-                ReadingSettings oSettings = new ReadingSettings();
-                oSettings.Number = numberOfReads;
-                oSettings.Rate = 25000; // Default rate
-
-                // Create gain
-                ReadingGain oGain = new ReadingGain();
-                oGain.Mode = GainMode.Manual;
-                oGain.Gain = gain;
-
-                // Create timing
-                ReadingTime oReadingTime = new ReadingTime();
-                oReadingTime.ReadDelay = settleTime;
-                oReadingTime.IntegrationTime = integrationTime;
-                oReadingTime.LagTime = 0;
-
-                // Create excitation filter
-                ReadingFilter oExFilter = new ReadingFilter();
-                oExFilter.ID = ++nID;
-                oExFilter.Wavelength = (excitationWavelength * 10).ToString();
-                oExFilter.Bandwidth = "90"; // Default bandwidth
-                oExFilter.Usage = "Fluorescence"; // Use string constant to match sample app
-                oExFilter.Type = "Ex"; // Use string constant to match sample app
-                oExFilter.Attenuation = "0";
-
-                // Create emission filter
-                ReadingFilter oEmFilter = new ReadingFilter();
-                oEmFilter.ID = ++nID;
-                oEmFilter.Wavelength = (emissionWavelength * 10).ToString();
-                oEmFilter.Bandwidth = "90"; // Default bandwidth
-                oEmFilter.Usage = "Fluorescence"; // Use string constant to match sample app
-                oEmFilter.Type = "Em"; // Use string constant to match sample app
-                oEmFilter.Attenuation = "0";
-
-                // Assemble the objects
-                oReadingLabel.Settings = oSettings;
-                oReadingLabel.Gain = oGain;
-                oReadingLabel.Timing = oReadingTime;
-                oReadingLabel.ExFilter = oExFilter;
-                oReadingLabel.EmFilter = oEmFilter;
-                oMeasurementReading.Actions.Add(oReadingLabel);
-                oWell.Actions.Add(oMeasurementReading);
-                oFluoMeas.Actions.Add(oWell);
-                oRange.Actions.Add(oFluoMeas);
-                oPlate.Actions.Add(oRange);
-                oCycle.Actions.Add(oPlate);
-                oMeasurement.Actions.Add(oCycle);
-                oFile.DocumentContent = oMeasurement;
-
-                // For debugging - save the script to a file
-                try
-                {
-                    string debugPath = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                        "TecanOpcUa",
-                        "Debug");
-
-                    if (!Directory.Exists(debugPath))
-                    {
-                        Directory.CreateDirectory(debugPath);
-                    }
-
-                    string scriptPath = Path.Combine(debugPath, $"FluoScript_{DateTime.Now:yyyyMMdd_HHmmss}.xml");
-                    Tecan.At.Common.FileManagement.FileHandling.Save(oFile, scriptPath);
-                    Console.WriteLine($"Saved debug script to: {scriptPath}");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Warning: Could not save debug script: {ex.Message}");
-                }
-
-                Console.WriteLine("Successfully generated fluorescence script");
-                return oFile;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error generating fluorescence script: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// Generates a script for luminescence measurement
-        /// </summary>
-        private TecanFile GenerateLuminescenceScript(
-            string plateName,
-            string wellRange,
-            int integrationTime,
-            int settleTime,
-            string attenuation,
-            string labelName)
-        {
-            try
-            {
-                Console.WriteLine($"Generating luminescence script with parameters: plateType={plateName}, wellRange={wellRange}, " +
-                    $"integrationTime={integrationTime}, settleTime={settleTime}, attenuation={attenuation}");
-
-                // Create a new TecanFile with proper structure
-                int nID = 0;
-                TecanFile oFile = CreateTecanFile();
-                TecanMeasurement oMeasurement = CreateTecanMeasurement(++nID);
-                MeasurementManualCycle oCycle = CreateManualCycle(++nID);
-
-                // Set plate
-                CyclePlate oPlate = CreatePlate(plateName, ++nID);
-
-                // Set well range
-                PlateRange oRange = CreateRange(wellRange, ++nID);
-
-                // Create luminescence measurement
-                MeasurementLuminescence oLumiMeas = new MeasurementLuminescence();
-                oLumiMeas.Name = "LUMI";
-                oLumiMeas.ID = ++nID;
-
-                // Create well
-                Well oWell = CreateWell(++nID);
-
-                // Create measurement reading
-                MeasurementReading oMeasurementReading = new MeasurementReading();
-                oMeasurementReading.ID = ++nID;
-
-                // Create reading label
-                ReadingLabel oReadingLabel = new ReadingLabel();
-                oReadingLabel.ID = ++nID;
-                oReadingLabel.Name = labelName;
-                oReadingLabel.ScanType = ScanMode.ScanFixed;
-
-                // Create filter for attenuation
-                ReadingFilter oFilter = new ReadingFilter();
-                oFilter.ID = ++nID;
-                oFilter.Wavelength = "0";
-                oFilter.Usage = "Empty"; // Use string constant to match sample app
-                oFilter.Bandwidth = "0";
-                oFilter.Attenuation = "0";
-                oFilter.Type = "Em"; // Use string constant to match sample app
-
-                // Create timing
-                ReadingTime oReadingTime = new ReadingTime();
-                oReadingTime.IntegrationTime = integrationTime * 1000; // Convert to μs
-                oReadingTime.ReadDelay = settleTime * 1000; // Convert to μs
-
-                // Assemble the objects
-                oReadingLabel.EmFilter = oFilter;
-                oReadingLabel.Timing = oReadingTime;
-                oMeasurementReading.Actions.Add(oReadingLabel);
-                oWell.Actions.Add(oMeasurementReading);
-                oLumiMeas.Actions.Add(oWell);
-                oRange.Actions.Add(oLumiMeas);
-                oPlate.Actions.Add(oRange);
-                oCycle.Actions.Add(oPlate);
-                oMeasurement.Actions.Add(oCycle);
-                oFile.DocumentContent = oMeasurement;
-
-                // For debugging - save the script to a file
-                try
-                {
-                    string debugPath = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                        "TecanOpcUa",
-                        "Debug");
-
-                    if (!Directory.Exists(debugPath))
-                    {
-                        Directory.CreateDirectory(debugPath);
-                    }
-
-                    string scriptPath = Path.Combine(debugPath, $"LumiScript_{DateTime.Now:yyyyMMdd_HHmmss}.xml");
-                    Tecan.At.Common.FileManagement.FileHandling.Save(oFile, scriptPath);
-                    Console.WriteLine($"Saved debug script to: {scriptPath}");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Warning: Could not save debug script: {ex.Message}");
-                }
-
-                Console.WriteLine("Successfully generated luminescence script");
-                return oFile;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error generating luminescence script: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
-                throw;
-            }
-        }
 
         /// <summary>
         /// Creates a TecanFile
@@ -1885,36 +1068,6 @@ namespace TecanOpcUa
         // Track the last time we saw progress
         private DateTime _lastProgressTime = DateTime.MinValue;
 
-        /// <summary>
-        /// Gets the measurement data for a specific well
-        /// </summary>
-        /// <param name="wellPosition">The well position (e.g., "A1", "B2")</param>
-        /// <returns>The measurement value, or null if no data exists for the well</returns>
-        public double? GetWellData(string wellPosition)
-        {
-            if (wellData.ContainsKey(wellPosition))
-            {
-                return wellData[wellPosition];
-            }
-            return null;
-        }
-
-        /// <summary>
-        /// Gets all measurement data as a dictionary of well positions to values
-        /// </summary>
-        /// <returns>Dictionary mapping well positions to measurement values</returns>
-        public Dictionary<string, double> GetAllWellData()
-        {
-            return new Dictionary<string, double>(wellData);
-        }
-
-        /// <summary>
-        /// Clears all measurement data
-        /// </summary>
-        public void ClearWellData()
-        {
-            wellData.Clear();
-        }
 
         /// <summary>
         /// Callback for measurement progress updates
@@ -2630,18 +1783,8 @@ namespace TecanOpcUa
         private BaseDataVariableState _instrumentInternalNameVariable;
 
         // Device capabilities variables
-        private BaseDataVariableState _hasLuminescenceFixedVariable;
         private BaseDataVariableState _hasAbsorbanceFixedVariable;
-        private BaseDataVariableState _hasCuvetteVariable;
         private BaseDataVariableState _hasAbsorbanceScanVariable;
-        private BaseDataVariableState _hasFluorescenceFixedVariable;
-        private BaseDataVariableState _hasFluorescenceScanVariable;
-        private BaseDataVariableState _hasFluorescencePolarizationVariable;
-        private BaseDataVariableState _hasHeatingVariable;
-        private BaseDataVariableState _hasShakingVariable;
-        private BaseDataVariableState _hasInjectionVariable;
-        private BaseDataVariableState _hasBarcodeVariable;
-        private BaseDataVariableState _isMonochromatorVariable;
 
         // Temperature range variables
         private BaseDataVariableState _temperatureMinVariable;
@@ -2923,53 +2066,13 @@ namespace TecanOpcUa
                     // Create device capabilities folder
                     _deviceCapabilitiesFolder = CreateFolder(_statusFolder, "DeviceCapabilities", "Device Capabilities");
 
-                    _hasLuminescenceFixedVariable = CreateVariable(_deviceCapabilitiesFolder, "HasLuminescenceFixed", "Has Luminescence Fixed", DataTypeIds.Boolean, ValueRanks.Scalar);
-                    _hasLuminescenceFixedVariable.Value = false;
-                    _hasLuminescenceFixedVariable.Description = new LocalizedText("en", "Indicates whether the device has fixed luminescence capability");
-
                     _hasAbsorbanceFixedVariable = CreateVariable(_deviceCapabilitiesFolder, "HasAbsorbanceFixed", "Has Absorbance Fixed", DataTypeIds.Boolean, ValueRanks.Scalar);
                     _hasAbsorbanceFixedVariable.Value = false;
                     _hasAbsorbanceFixedVariable.Description = new LocalizedText("en", "Indicates whether the device has fixed absorbance capability");
 
-                    _hasCuvetteVariable = CreateVariable(_deviceCapabilitiesFolder, "HasCuvette", "Has Cuvette", DataTypeIds.Boolean, ValueRanks.Scalar);
-                    _hasCuvetteVariable.Value = false;
-                    _hasCuvetteVariable.Description = new LocalizedText("en", "Indicates whether the device has cuvette capability");
-
                     _hasAbsorbanceScanVariable = CreateVariable(_deviceCapabilitiesFolder, "HasAbsorbanceScan", "Has Absorbance Scan", DataTypeIds.Boolean, ValueRanks.Scalar);
                     _hasAbsorbanceScanVariable.Value = false;
                     _hasAbsorbanceScanVariable.Description = new LocalizedText("en", "Indicates whether the device has absorbance scan capability");
-
-                    _hasFluorescenceFixedVariable = CreateVariable(_deviceCapabilitiesFolder, "HasFluorescenceFixed", "Has Fluorescence Fixed", DataTypeIds.Boolean, ValueRanks.Scalar);
-                    _hasFluorescenceFixedVariable.Value = false;
-                    _hasFluorescenceFixedVariable.Description = new LocalizedText("en", "Indicates whether the device has fixed fluorescence capability");
-
-                    _hasFluorescenceScanVariable = CreateVariable(_deviceCapabilitiesFolder, "HasFluorescenceScan", "Has Fluorescence Scan", DataTypeIds.Boolean, ValueRanks.Scalar);
-                    _hasFluorescenceScanVariable.Value = false;
-                    _hasFluorescenceScanVariable.Description = new LocalizedText("en", "Indicates whether the device has fluorescence scan capability");
-
-                    _hasFluorescencePolarizationVariable = CreateVariable(_deviceCapabilitiesFolder, "HasFluorescencePolarization", "Has Fluorescence Polarization", DataTypeIds.Boolean, ValueRanks.Scalar);
-                    _hasFluorescencePolarizationVariable.Value = false;
-                    _hasFluorescencePolarizationVariable.Description = new LocalizedText("en", "Indicates whether the device has fluorescence polarization capability");
-
-                    _hasHeatingVariable = CreateVariable(_deviceCapabilitiesFolder, "HasHeating", "Has Heating", DataTypeIds.Boolean, ValueRanks.Scalar);
-                    _hasHeatingVariable.Value = false;
-                    _hasHeatingVariable.Description = new LocalizedText("en", "Indicates whether the device has heating capability");
-
-                    _hasShakingVariable = CreateVariable(_deviceCapabilitiesFolder, "HasShaking", "Has Shaking", DataTypeIds.Boolean, ValueRanks.Scalar);
-                    _hasShakingVariable.Value = false;
-                    _hasShakingVariable.Description = new LocalizedText("en", "Indicates whether the device has shaking capability");
-
-                    _hasInjectionVariable = CreateVariable(_deviceCapabilitiesFolder, "HasInjection", "Has Injection", DataTypeIds.Boolean, ValueRanks.Scalar);
-                    _hasInjectionVariable.Value = false;
-                    _hasInjectionVariable.Description = new LocalizedText("en", "Indicates whether the device has injection capability");
-
-                    _hasBarcodeVariable = CreateVariable(_deviceCapabilitiesFolder, "HasBarcode", "Has Barcode", DataTypeIds.Boolean, ValueRanks.Scalar);
-                    _hasBarcodeVariable.Value = false;
-                    _hasBarcodeVariable.Description = new LocalizedText("en", "Indicates whether the device has barcode reading capability");
-
-                    _isMonochromatorVariable = CreateVariable(_deviceCapabilitiesFolder, "IsMonochromator", "Is Monochromator", DataTypeIds.Boolean, ValueRanks.Scalar);
-                    _isMonochromatorVariable.Value = false;
-                    _isMonochromatorVariable.Description = new LocalizedText("en", "Indicates whether the device is a monochromator");
 
                     // Create temperature range variables
                     FolderState temperatureRangeFolder = CreateFolder(_deviceCapabilitiesFolder, "TemperatureRange", "Temperature Range");
@@ -2991,104 +2094,6 @@ namespace TecanOpcUa
 
                     // Create measurements folder
                     _measurementsFolder = CreateFolder(_tecanFolder, "Measurements", "Measurements");
-
-                    // Create methods to retrieve measurement data
-                    MethodState getWellDataMethod = CreateMethod(_measurementsFolder, "GetWellData", "Get Well Data");
-                    MethodState getAllWellDataMethod = CreateMethod(_measurementsFolder, "GetAllWellData", "Get All Well Data");
-                    MethodState clearWellDataMethod = CreateMethod(_measurementsFolder, "ClearWellData", "Clear Well Data");
-
-                    // Define input arguments for GetWellData
-                    getWellDataMethod.InputArguments = new PropertyState<Argument[]>(getWellDataMethod);
-                    getWellDataMethod.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    getWellDataMethod.InputArguments.BrowseName = BrowseNames.InputArguments;
-                    getWellDataMethod.InputArguments.DisplayName = getWellDataMethod.InputArguments.BrowseName.Name;
-                    getWellDataMethod.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    getWellDataMethod.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    getWellDataMethod.InputArguments.DataType = DataTypeIds.Argument;
-                    getWellDataMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
-
-                    Argument wellPositionArgument = new Argument();
-                    wellPositionArgument.Name = "WellPosition";
-                    wellPositionArgument.Description = new LocalizedText("The well position (e.g., 'A1', 'B2')");
-                    wellPositionArgument.DataType = DataTypeIds.String;
-                    wellPositionArgument.ValueRank = ValueRanks.Scalar;
-
-                    getWellDataMethod.InputArguments.Value = new Argument[] { wellPositionArgument };
-
-                    // Define output arguments for GetWellData
-                    getWellDataMethod.OutputArguments = new PropertyState<Argument[]>(getWellDataMethod);
-                    getWellDataMethod.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    getWellDataMethod.OutputArguments.BrowseName = BrowseNames.OutputArguments;
-                    getWellDataMethod.OutputArguments.DisplayName = getWellDataMethod.OutputArguments.BrowseName.Name;
-                    getWellDataMethod.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    getWellDataMethod.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    getWellDataMethod.OutputArguments.DataType = DataTypeIds.Argument;
-                    getWellDataMethod.OutputArguments.ValueRank = ValueRanks.OneDimension;
-
-                    Argument wellValueArgument = new Argument();
-                    wellValueArgument.Name = "Value";
-                    wellValueArgument.Description = new LocalizedText("The measurement value for the specified well");
-                    wellValueArgument.DataType = DataTypeIds.Double;
-                    wellValueArgument.ValueRank = ValueRanks.Scalar;
-
-                    Argument hasValueArgument = new Argument();
-                    hasValueArgument.Name = "HasValue";
-                    hasValueArgument.Description = new LocalizedText("Indicates whether a value was found for the specified well");
-                    hasValueArgument.DataType = DataTypeIds.Boolean;
-                    hasValueArgument.ValueRank = ValueRanks.Scalar;
-
-                    getWellDataMethod.OutputArguments.Value = new Argument[] { wellValueArgument, hasValueArgument };
-
-                    // Define input arguments for GetAllWellData (none)
-                    getAllWellDataMethod.InputArguments = new PropertyState<Argument[]>(getAllWellDataMethod);
-                    getAllWellDataMethod.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    getAllWellDataMethod.InputArguments.BrowseName = BrowseNames.InputArguments;
-                    getAllWellDataMethod.InputArguments.DisplayName = getAllWellDataMethod.InputArguments.BrowseName.Name;
-                    getAllWellDataMethod.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    getAllWellDataMethod.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    getAllWellDataMethod.InputArguments.DataType = DataTypeIds.Argument;
-                    getAllWellDataMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
-                    getAllWellDataMethod.InputArguments.Value = new Argument[0];
-
-                    // Define output arguments for GetAllWellData
-                    getAllWellDataMethod.OutputArguments = new PropertyState<Argument[]>(getAllWellDataMethod);
-                    getAllWellDataMethod.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    getAllWellDataMethod.OutputArguments.BrowseName = BrowseNames.OutputArguments;
-                    getAllWellDataMethod.OutputArguments.DisplayName = getAllWellDataMethod.OutputArguments.BrowseName.Name;
-                    getAllWellDataMethod.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    getAllWellDataMethod.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    getAllWellDataMethod.OutputArguments.DataType = DataTypeIds.Argument;
-                    getAllWellDataMethod.OutputArguments.ValueRank = ValueRanks.OneDimension;
-
-                    Argument wellDataArgument = new Argument();
-                    wellDataArgument.Name = "WellData";
-                    wellDataArgument.Description = new LocalizedText("JSON string containing all well data as key-value pairs");
-                    wellDataArgument.DataType = DataTypeIds.String;
-                    wellDataArgument.ValueRank = ValueRanks.Scalar;
-
-                    getAllWellDataMethod.OutputArguments.Value = new Argument[] { wellDataArgument };
-
-                    // Define input arguments for ClearWellData (none)
-                    clearWellDataMethod.InputArguments = new PropertyState<Argument[]>(clearWellDataMethod);
-                    clearWellDataMethod.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    clearWellDataMethod.InputArguments.BrowseName = BrowseNames.InputArguments;
-                    clearWellDataMethod.InputArguments.DisplayName = clearWellDataMethod.InputArguments.BrowseName.Name;
-                    clearWellDataMethod.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    clearWellDataMethod.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    clearWellDataMethod.InputArguments.DataType = DataTypeIds.Argument;
-                    clearWellDataMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
-                    clearWellDataMethod.InputArguments.Value = new Argument[0];
-
-                    // Define output arguments for ClearWellData (none)
-                    clearWellDataMethod.OutputArguments = new PropertyState<Argument[]>(clearWellDataMethod);
-                    clearWellDataMethod.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    clearWellDataMethod.OutputArguments.BrowseName = BrowseNames.OutputArguments;
-                    clearWellDataMethod.OutputArguments.DisplayName = clearWellDataMethod.OutputArguments.BrowseName.Name;
-                    clearWellDataMethod.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    clearWellDataMethod.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    clearWellDataMethod.OutputArguments.DataType = DataTypeIds.Argument;
-                    clearWellDataMethod.OutputArguments.ValueRank = ValueRanks.OneDimension;
-                    clearWellDataMethod.OutputArguments.Value = new Argument[0];
 
                     // Create absorbance measurement method
                     MethodState absorbanceMeasurementMethod = CreateMethod(_measurementsFolder, "PerformAbsorbanceMeasurement", "Perform Absorbance Measurement");
@@ -3160,113 +2165,6 @@ namespace TecanOpcUa
 
                     absorbanceMeasurementMethod.OutputArguments.Value = new Argument[] { measurementIdArgument };
 
-                    // Create fluorescence measurement method
-                    MethodState fluorescenceMeasurementMethod = CreateMethod(_measurementsFolder, "PerformFluorescenceMeasurement", "Perform Fluorescence Measurement");
-
-                    // Define input arguments for fluorescence measurement
-                    fluorescenceMeasurementMethod.InputArguments = new PropertyState<Argument[]>(fluorescenceMeasurementMethod);
-                    fluorescenceMeasurementMethod.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    fluorescenceMeasurementMethod.InputArguments.BrowseName = BrowseNames.InputArguments;
-                    fluorescenceMeasurementMethod.InputArguments.DisplayName = fluorescenceMeasurementMethod.InputArguments.BrowseName.Name;
-                    fluorescenceMeasurementMethod.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    fluorescenceMeasurementMethod.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    fluorescenceMeasurementMethod.InputArguments.DataType = DataTypeIds.Argument;
-                    fluorescenceMeasurementMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
-
-                    Argument excitationWavelengthArgument = new Argument();
-                    excitationWavelengthArgument.Name = "ExcitationWavelength";
-                    excitationWavelengthArgument.Description = new LocalizedText("The excitation wavelength in nm");
-                    excitationWavelengthArgument.DataType = DataTypeIds.Int32;
-                    excitationWavelengthArgument.ValueRank = ValueRanks.Scalar;
-
-                    Argument emissionWavelengthArgument = new Argument();
-                    emissionWavelengthArgument.Name = "EmissionWavelength";
-                    emissionWavelengthArgument.Description = new LocalizedText("The emission wavelength in nm");
-                    emissionWavelengthArgument.DataType = DataTypeIds.Int32;
-                    emissionWavelengthArgument.ValueRank = ValueRanks.Scalar;
-
-                    Argument gainArgument = new Argument();
-                    gainArgument.Name = "Gain";
-                    gainArgument.Description = new LocalizedText("The gain value");
-                    gainArgument.DataType = DataTypeIds.Int32;
-                    gainArgument.ValueRank = ValueRanks.Scalar;
-
-                    Argument integrationTimeArgument = new Argument();
-                    integrationTimeArgument.Name = "IntegrationTime";
-                    integrationTimeArgument.Description = new LocalizedText("The integration time in μs");
-                    integrationTimeArgument.DataType = DataTypeIds.Int32;
-                    integrationTimeArgument.ValueRank = ValueRanks.Scalar;
-
-                    Argument readingModeArgument = new Argument();
-                    readingModeArgument.Name = "ReadingMode";
-                    readingModeArgument.Description = new LocalizedText("The reading mode (Top or Bottom)");
-                    readingModeArgument.DataType = DataTypeIds.String;
-                    readingModeArgument.ValueRank = ValueRanks.Scalar;
-
-                    fluorescenceMeasurementMethod.InputArguments.Value = new Argument[]
-                    {
-                        plateTypeArgument,
-                        wellRangeArgument,
-                        excitationWavelengthArgument,
-                        emissionWavelengthArgument,
-                        gainArgument,
-                        numberOfFlashesArgument,
-                        integrationTimeArgument,
-                        settleTimeArgument,
-                        readingModeArgument
-                    };
-
-                    // Define output arguments for fluorescence measurement
-                    fluorescenceMeasurementMethod.OutputArguments = new PropertyState<Argument[]>(fluorescenceMeasurementMethod);
-                    fluorescenceMeasurementMethod.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    fluorescenceMeasurementMethod.OutputArguments.BrowseName = BrowseNames.OutputArguments;
-                    fluorescenceMeasurementMethod.OutputArguments.DisplayName = fluorescenceMeasurementMethod.OutputArguments.BrowseName.Name;
-                    fluorescenceMeasurementMethod.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    fluorescenceMeasurementMethod.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    fluorescenceMeasurementMethod.OutputArguments.DataType = DataTypeIds.Argument;
-                    fluorescenceMeasurementMethod.OutputArguments.ValueRank = ValueRanks.OneDimension;
-
-                    fluorescenceMeasurementMethod.OutputArguments.Value = new Argument[] { measurementIdArgument };
-
-                    // Create luminescence measurement method
-                    MethodState luminescenceMeasurementMethod = CreateMethod(_measurementsFolder, "PerformLuminescenceMeasurement", "Perform Luminescence Measurement");
-
-                    // Define input arguments for luminescence measurement
-                    luminescenceMeasurementMethod.InputArguments = new PropertyState<Argument[]>(luminescenceMeasurementMethod);
-                    luminescenceMeasurementMethod.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    luminescenceMeasurementMethod.InputArguments.BrowseName = BrowseNames.InputArguments;
-                    luminescenceMeasurementMethod.InputArguments.DisplayName = luminescenceMeasurementMethod.InputArguments.BrowseName.Name;
-                    luminescenceMeasurementMethod.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    luminescenceMeasurementMethod.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    luminescenceMeasurementMethod.InputArguments.DataType = DataTypeIds.Argument;
-                    luminescenceMeasurementMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
-
-                    Argument attenuationArgument = new Argument();
-                    attenuationArgument.Name = "Attenuation";
-                    attenuationArgument.Description = new LocalizedText("The attenuation filter to use");
-                    attenuationArgument.DataType = DataTypeIds.String;
-                    attenuationArgument.ValueRank = ValueRanks.Scalar;
-
-                    luminescenceMeasurementMethod.InputArguments.Value = new Argument[]
-                    {
-                        plateTypeArgument,
-                        wellRangeArgument,
-                        integrationTimeArgument,
-                        settleTimeArgument,
-                        attenuationArgument
-                    };
-
-                    // Define output arguments for luminescence measurement
-                    luminescenceMeasurementMethod.OutputArguments = new PropertyState<Argument[]>(luminescenceMeasurementMethod);
-                    luminescenceMeasurementMethod.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    luminescenceMeasurementMethod.OutputArguments.BrowseName = BrowseNames.OutputArguments;
-                    luminescenceMeasurementMethod.OutputArguments.DisplayName = luminescenceMeasurementMethod.OutputArguments.BrowseName.Name;
-                    luminescenceMeasurementMethod.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    luminescenceMeasurementMethod.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    luminescenceMeasurementMethod.OutputArguments.DataType = DataTypeIds.Argument;
-                    luminescenceMeasurementMethod.OutputArguments.ValueRank = ValueRanks.OneDimension;
-
-                    luminescenceMeasurementMethod.OutputArguments.Value = new Argument[] { measurementIdArgument };
 
                     // Create commands folder
                     _commandsFolder = CreateFolder(_tecanFolder, "Commands", "Commands");
@@ -3587,65 +2485,13 @@ namespace TecanOpcUa
                                     // Update device capabilities if helper is available
                                     if (_tecan._helper != null)
                                     {
-                                        // Update capabilities
-                                        if (_hasLuminescenceFixedVariable != null)
-                                        {
-                                            _hasLuminescenceFixedVariable.Value = _tecan._helper.HasLuminescenceFixed();
-                                        }
-
                                         if (_hasAbsorbanceFixedVariable != null)
                                         {
                                             _hasAbsorbanceFixedVariable.Value = _tecan._helper.HasAbsorbanceFixed();
                                         }
-
-                                        if (_hasCuvetteVariable != null)
-                                        {
-                                            _hasCuvetteVariable.Value = _tecan._helper.HasCuvette();
-                                        }
-
                                         if (_hasAbsorbanceScanVariable != null)
                                         {
                                             _hasAbsorbanceScanVariable.Value = _tecan._helper.HasAbsorbanceScan();
-                                        }
-
-                                        if (_hasFluorescenceFixedVariable != null)
-                                        {
-                                            _hasFluorescenceFixedVariable.Value = _tecan._helper.HasFluoresenceFixed();
-                                        }
-
-                                        if (_hasFluorescenceScanVariable != null)
-                                        {
-                                            _hasFluorescenceScanVariable.Value = _tecan._helper.HasFluoresenceScan();
-                                        }
-
-                                        if (_hasFluorescencePolarizationVariable != null)
-                                        {
-                                            _hasFluorescencePolarizationVariable.Value = _tecan._helper.HasFluorescencePolarization();
-                                        }
-
-                                        if (_hasHeatingVariable != null)
-                                        {
-                                            _hasHeatingVariable.Value = _tecan._helper.HasHeating();
-                                        }
-
-                                        if (_hasShakingVariable != null)
-                                        {
-                                            _hasShakingVariable.Value = _tecan._helper.HasShaking();
-                                        }
-
-                                        if (_hasInjectionVariable != null)
-                                        {
-                                            _hasInjectionVariable.Value = _tecan._helper.HasInjection();
-                                        }
-
-                                        if (_hasBarcodeVariable != null)
-                                        {
-                                            _hasBarcodeVariable.Value = _tecan._helper.HasBarcode();
-                                        }
-
-                                        if (_isMonochromatorVariable != null)
-                                        {
-                                            _isMonochromatorVariable.Value = _tecan._helper.IsMonochromator();
                                         }
 
                                         // Update temperature range
@@ -3653,7 +2499,6 @@ namespace TecanOpcUa
                                         {
                                             int minTemp = 0;
                                             int maxTemp = 0;
-                                            _tecan._helper.GetTemperatureRange(ref minTemp, ref maxTemp);
                                             _temperatureMinVariable.Value = minTemp / 10.0; // Convert to degrees
                                             _temperatureMaxVariable.Value = maxTemp / 10.0; // Convert to degrees
                                         }
@@ -3701,18 +2546,8 @@ namespace TecanOpcUa
                         }
 
                         // Reset capabilities to false
-                        if (_hasLuminescenceFixedVariable != null) _hasLuminescenceFixedVariable.Value = false;
                         if (_hasAbsorbanceFixedVariable != null) _hasAbsorbanceFixedVariable.Value = false;
-                        if (_hasCuvetteVariable != null) _hasCuvetteVariable.Value = false;
                         if (_hasAbsorbanceScanVariable != null) _hasAbsorbanceScanVariable.Value = false;
-                        if (_hasFluorescenceFixedVariable != null) _hasFluorescenceFixedVariable.Value = false;
-                        if (_hasFluorescenceScanVariable != null) _hasFluorescenceScanVariable.Value = false;
-                        if (_hasFluorescencePolarizationVariable != null) _hasFluorescencePolarizationVariable.Value = false;
-                        if (_hasHeatingVariable != null) _hasHeatingVariable.Value = false;
-                        if (_hasShakingVariable != null) _hasShakingVariable.Value = false;
-                        if (_hasInjectionVariable != null) _hasInjectionVariable.Value = false;
-                        if (_hasBarcodeVariable != null) _hasBarcodeVariable.Value = false;
-                        if (_isMonochromatorVariable != null) _isMonochromatorVariable.Value = false;
 
                         // Reset temperature range
                         if (_temperatureMinVariable != null) _temperatureMinVariable.Value = 0.0;
@@ -3879,21 +2714,6 @@ namespace TecanOpcUa
 
                     case "PerformAbsorbanceMeasurement":
                         return OnPerformAbsorbanceMeasurement(context, method, inputArguments, outputArguments);
-
-                    case "PerformFluorescenceMeasurement":
-                        return OnPerformFluorescenceMeasurement(context, method, inputArguments, outputArguments);
-
-                    case "PerformLuminescenceMeasurement":
-                        return OnPerformLuminescenceMeasurement(context, method, inputArguments, outputArguments);
-
-                    case "GetWellData":
-                        return OnGetWellData(context, method, inputArguments, outputArguments);
-
-                    case "GetAllWellData":
-                        return OnGetAllWellData(context, method, inputArguments, outputArguments);
-
-                    case "ClearWellData":
-                        return OnClearWellData(context, method, inputArguments, outputArguments);
 
                     default:
                         return StatusCodes.BadMethodInvalid;
@@ -4193,190 +3013,5 @@ namespace TecanOpcUa
             }
         }
 
-        // PerformFluorescenceMeasurement method implementation
-        private ServiceResult OnPerformFluorescenceMeasurement(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
-        {
-            try
-            {
-                // Check if we have the right number of input arguments
-                if (inputArguments.Count != 9)
-                {
-                    return StatusCodes.BadArgumentsMissing;
-                }
-
-                // Get the input arguments
-                string plateType = inputArguments[0].ToString();
-                string wellRange = inputArguments[1].ToString();
-                int excitationWavelength = Convert.ToInt32(inputArguments[2]);
-                int emissionWavelength = Convert.ToInt32(inputArguments[3]);
-                int gain = Convert.ToInt32(inputArguments[4]);
-                int numberOfFlashes = Convert.ToInt32(inputArguments[5]);
-                int integrationTime = Convert.ToInt32(inputArguments[6]);
-                int settleTime = Convert.ToInt32(inputArguments[7]);
-                string readingMode = inputArguments[8].ToString();
-
-                // Check if the device is connected
-                if (!_tecan.IsConnected())
-                {
-                    return StatusCodes.BadDeviceFailure;
-                }
-
-                // Perform the measurement
-                MeasurementResult result = _measurementOperations.PerformFluorescenceMeasurement(
-                    plateType,
-                    wellRange,
-                    excitationWavelength,
-                    emissionWavelength,
-                    gain,
-                    numberOfFlashes,
-                    integrationTime,
-                    settleTime,
-                    readingMode);
-
-                // Set the output argument (measurement ID)
-                outputArguments[0] = result.Id;
-
-                return StatusCodes.Good;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in OnPerformFluorescenceMeasurement: {ex.Message}");
-                return new ServiceResult(ex);
-            }
-        }
-
-        // PerformLuminescenceMeasurement method implementation
-        private ServiceResult OnPerformLuminescenceMeasurement(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
-        {
-            try
-            {
-                // Check if we have the right number of input arguments
-                if (inputArguments.Count != 5)
-                {
-                    return StatusCodes.BadArgumentsMissing;
-                }
-
-                // Get the input arguments
-                string plateType = inputArguments[0].ToString();
-                string wellRange = inputArguments[1].ToString();
-                int integrationTime = Convert.ToInt32(inputArguments[2]);
-                int settleTime = Convert.ToInt32(inputArguments[3]);
-                string attenuation = inputArguments[4].ToString();
-
-                // Check if the device is connected
-                if (!_tecan.IsConnected())
-                {
-                    return StatusCodes.BadDeviceFailure;
-                }
-
-                // Perform the measurement
-                MeasurementResult result = _measurementOperations.PerformLuminescenceMeasurement(
-                    plateType,
-                    wellRange,
-                    integrationTime,
-                    settleTime,
-                    attenuation);
-
-                // Set the output argument (measurement ID)
-                outputArguments[0] = result.Id;
-
-                return StatusCodes.Good;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in OnPerformLuminescenceMeasurement: {ex.Message}");
-                return new ServiceResult(ex);
-            }
-        }
-
-        // GetWellData method implementation
-        private ServiceResult OnGetWellData(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
-        {
-            try
-            {
-                // Check if we have the right number of input arguments
-                if (inputArguments.Count != 1)
-                {
-                    return StatusCodes.BadArgumentsMissing;
-                }
-
-                // Get the well position
-                string wellPosition = inputArguments[0].ToString();
-
-                // Get the well data
-                double? value = _measurementOperations.GetWellData(wellPosition);
-
-                // Set the output arguments
-                if (value.HasValue)
-                {
-                    outputArguments[0] = value.Value;
-                    outputArguments[1] = true;
-                }
-                else
-                {
-                    outputArguments[0] = 0.0;
-                    outputArguments[1] = false;
-                }
-
-                return StatusCodes.Good;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in OnGetWellData: {ex.Message}");
-                return new ServiceResult(ex);
-            }
-        }
-
-        // GetAllWellData method implementation
-        private ServiceResult OnGetAllWellData(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
-        {
-            try
-            {
-                // Get all well data
-                Dictionary<string, double> wellData = _measurementOperations.GetAllWellData();
-
-                // Convert to JSON string
-                StringBuilder sb = new StringBuilder();
-                sb.Append("{");
-                bool first = true;
-                foreach (var kvp in wellData)
-                {
-                    if (!first)
-                    {
-                        sb.Append(",");
-                    }
-                    sb.Append($"\"{kvp.Key}\":{kvp.Value}");
-                    first = false;
-                }
-                sb.Append("}");
-
-                // Set the output argument
-                outputArguments[0] = sb.ToString();
-
-                return StatusCodes.Good;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in OnGetAllWellData: {ex.Message}");
-                return new ServiceResult(ex);
-            }
-        }
-
-        // ClearWellData method implementation
-        private ServiceResult OnClearWellData(ISystemContext context, MethodState method, IList<object> inputArguments, IList<object> outputArguments)
-        {
-            try
-            {
-                // Clear all well data
-                _measurementOperations.ClearWellData();
-
-                return StatusCodes.Good;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in OnClearWellData: {ex.Message}");
-                return new ServiceResult(ex);
-            }
-        }
     }
 }
