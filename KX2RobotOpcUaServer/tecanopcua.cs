@@ -629,7 +629,7 @@ namespace TecanOpcUa
                 objReadingTime.ReadDelay = settleTime;
 
                 ReadingFilter objFilter = new ReadingFilter();
-                objFilter.Wavelength = (wavelength * 10).ToString();
+                objFilter.Wavelength = wavelength.ToString();
                 objFilter.Bandwidth = "50"; // Default bandwidth (5.0 nm)
                 objFilter.Usage = "Absorbance";
                 objFilter.Type = "Ex";
