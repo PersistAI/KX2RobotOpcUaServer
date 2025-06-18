@@ -31,72 +31,10 @@ using Tecan.At.Instrument.Common.Reader;
 namespace TecanOpcUa
 {
     /// <summary>
-    /// Constants for measurement modes
+    /// Utility class for creating Tecan measurement objects
     /// </summary>
-    public static class MeasMode
+    public static class TecanObjectFactory
     {
-        public static class Abs
-        {
-            public const String Fixed = "ABS.FIXED";
-            public const String Scan = "ABS.SCAN";
-        }
-    }
-
-    /// <summary>
-    /// Constants for measurement modes
-    /// </summary>
-    public static class MeasMode2
-    {
-        public const string Absorbance = "Absorbance";
-    }
-
-    /// <summary>
-    /// Helper class for Tecan device capabilities
-    /// </summary>
-    public class TecanHelper
-    {
-        // Properties to store reader information
-        public TecanReaderDefinition ReaderDefinition { get; set; }
-        public IReader Reader { get; set; }
-
-        // Device capability methods
-
-        public bool HasAbsorbanceFixed()
-        {
-            try
-            {
-                if (Reader != null && Reader.ReaderCapabilities != null)
-                {
-                    return Reader.ReaderCapabilities.HasAbsorbanceFixed();
-                }
-                return false;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in HasAbsorbanceFixed: {ex.Message}");
-                return false;
-            }
-        }
-
-        public bool HasAbsorbanceScan()
-        {
-            try
-            {
-                if (Reader != null && Reader.ReaderCapabilities != null)
-                {
-                    return Reader.ReaderCapabilities.HasAbsorbanceScan();
-                }
-                return false;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in HasAbsorbanceScan: {ex.Message}");
-                return false;
-            }
-        }
-
-        #region Creation Helpers
-
         /// <summary>
         /// Creates a TecanFile with proper metadata
         /// </summary>
@@ -177,122 +115,78 @@ namespace TecanOpcUa
 
             return oWell;
         }
+    }
 
-
-        /// <summary>
-        /// Gets the plate name from a script
-        /// </summary>
-        public string GetPlate(IItemList iList)
+    /// <summary>
+    /// Constants for measurement modes
+    /// </summary>
+    public static class MeasMode
+    {
+        public static class Abs
         {
-            CyclePlate oPlate = QueryNode(iList, typeof(CyclePlate)) as CyclePlate;
-            if (oPlate != null)
-            {
-                return oPlate.PlateName;
-            }
-            return "";
+            public const String Fixed = "ABS.FIXED";
+            public const String Scan = "ABS.SCAN";
         }
+    }
+
+    /// <summary>
+    /// Constants for measurement modes
+    /// </summary>
+    public static class MeasMode2
+    {
+        public const string Absorbance = "Absorbance";
+    }
+
+    /// <summary>
+    /// Helper class for Tecan device capabilities
+    /// </summary>
+    public class TecanHelper
+    {
+        // Properties to store reader information
+        public TecanReaderDefinition ReaderDefinition { get; set; }
+        public IReader Reader { get; set; }
+
+        // Device capability methods
 
         /// <summary>
-        /// Gets the well range from a script
+        /// Checks if the device supports fixed absorbance measurements
         /// </summary>
-        public string GetRange(IItemList iList)
+        public bool HasAbsorbanceFixed()
         {
-            PlateRange oRange = QueryNode(iList, typeof(PlateRange)) as PlateRange;
-            if (oRange != null)
+            try
             {
-                return oRange.Range;
-            }
-            return "";
-        }
-
-        /// <summary>
-        /// Gets the kinetic loop count from a script
-        /// </summary>
-        public string GetKinetic(IItemList iList)
-        {
-            MeasurementKinetic oKinetic = QueryNode(iList, typeof(MeasurementKinetic)) as MeasurementKinetic;
-            if (oKinetic != null)
-            {
-                return oKinetic.NrOfLoops.ToString();
-            }
-            return "";
-        }
-
-        /// <summary>
-        /// Gets the wavelength information from a script
-        /// </summary>
-        public string GetWavelength(IItemList iList)
-        {
-            MeasurementReading oReading = QueryNode(iList, typeof(MeasurementReading)) as MeasurementReading;
-            if (oReading != null)
-            {
-                foreach (ReadingLabel oLabel in oReading.ReadingLabels)
+                if (Reader != null && Reader.ReaderCapabilities != null)
                 {
-                    string sFilter = "";
-                    ReadingFilter oExFilter = oLabel.ExFilter;
-                    if (oExFilter != null)
-                    {
-                        sFilter = "Ex: ";
-                        sFilter += "Wavelength = " + oExFilter.Wavelength.ToString() + ", ";
-                        sFilter += "Bandwidth = " + oExFilter.Bandwidth.ToString();
-                    }
-                    ReadingFilter oEmFilter = oLabel.EmFilter;
-                    if (oEmFilter != null)
-                    {
-                        sFilter += "; ";
-                        sFilter += "Em: ";
-                        sFilter += "Wavelength = " + oEmFilter.Wavelength.ToString() + ", ";
-                        sFilter += "Bandwidth = " + oEmFilter.Bandwidth.ToString();
-                    }
-                    return sFilter;
+                    return Reader.ReaderCapabilities.HasAbsorbanceFixed();
                 }
+                return false;
             }
-            return "";
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in HasAbsorbanceFixed: {ex.Message}");
+                return false;
+            }
         }
 
         /// <summary>
-        /// Gets the measurement mode from a script
+        /// Checks if the device supports absorbance scan measurements
         /// </summary>
-        public string GetMeasurementMode(IItemList iList)
+        public bool HasAbsorbanceScan()
         {
-            RangeMeasurement oMeas = QueryNode(iList, typeof(RangeMeasurement)) as RangeMeasurement;
-            if (oMeas != null)
+            try
             {
-                string sType = "";
-                if (oMeas.GetType() == typeof(MeasurementAbsorbance))
+                if (Reader != null && Reader.ReaderCapabilities != null)
                 {
-                    sType = "Absorbance";
+                    return Reader.ReaderCapabilities.HasAbsorbanceScan();
                 }
-                else
-                {
-                    sType = "Unknown";
-                }
-                return sType;
+                return false;
             }
-            return "";
-        }
-
-        /// <summary>
-        /// Helper method to query nodes in a script
-        /// </summary>
-        private IItemList QueryNode(IItemList iList, Type oTypeToFind)
-        {
-            foreach (object o in iList.Actions)
+            catch (Exception ex)
             {
-                IItemList iList2 = o as IItemList;
-                if (iList2 != null)
-                {
-                    if (iList2.GetType() == oTypeToFind || iList2.GetType().BaseType == oTypeToFind)
-                    {
-                        return iList2;
-                    }
-                    return QueryNode(iList2, oTypeToFind);
-                }
+                Console.WriteLine($"Error in HasAbsorbanceScan: {ex.Message}");
+                return false;
             }
-            return null;
         }
-
-        #endregion Query Script Helpers
     }
 
     /// <summary>
@@ -401,9 +295,6 @@ namespace TecanOpcUa
         private List<MeasurementResult> _measurementResults = new List<MeasurementResult>();
         private ResultOutput _resultOutput = null;
         private Guid _currentMeasurementGuid;
-
-        // Dictionary to store measurement data by well position (e.g., "A1", "B2")
-        private Dictionary<string, double> wellData = new Dictionary<string, double>();
 
         /// <summary>
         /// Constructor
@@ -588,15 +479,15 @@ namespace TecanOpcUa
 
                 // Create a new TecanFile with proper structure
                 int nID = 0;
-                TecanFile oFile = CreateTecanFile();
-                TecanMeasurement oMeasurement = CreateTecanMeasurement(++nID);
-                MeasurementManualCycle oCycle = CreateManualCycle(++nID);
+                TecanFile oFile = TecanObjectFactory.CreateTecanFile();
+                TecanMeasurement oMeasurement = TecanObjectFactory.CreateTecanMeasurement(++nID);
+                MeasurementManualCycle oCycle = TecanObjectFactory.CreateManualCycle(++nID);
 
                 // Set plate
-                CyclePlate oPlate = CreatePlate(plateName, ++nID);
+                CyclePlate oPlate = TecanObjectFactory.CreatePlate(plateName, ++nID);
 
                 // Set well range
-                PlateRange oRange = CreateRange(wellRange, ++nID);
+                PlateRange oRange = TecanObjectFactory.CreateRange(wellRange, ++nID);
 
                 // Create absorbance measurement with proper settings
                 MeasurementAbsorbance oAbsMeas = new MeasurementAbsorbance();
@@ -604,7 +495,7 @@ namespace TecanOpcUa
                 oAbsMeas.ID = ++nID;
 
                 // Create well
-                Well oWell = CreateWell(++nID);
+                Well oWell = TecanObjectFactory.CreateWell(++nID);
 
                 // Build measurement script for absorbance with values entered by user
                 MeasurementReading objMeasurementReading = new MeasurementReading();
@@ -685,86 +576,6 @@ namespace TecanOpcUa
         }
 
 
-        /// <summary>
-        /// Creates a TecanFile
-        /// </summary>
-        private TecanFile CreateTecanFile()
-        {
-            TecanFile oFile = new TecanFile();
-            oFile.FileFormat = "Tecan.At.Measurement";
-            oFile.FileVersion = "1.0";
-
-            oFile.TecanFileInfo = new Tecan.At.Common.DocumentManagement.FileInfo();
-            oFile.TecanFileInfo.InfoCreatedFrom = "TecanOpcUa";
-            oFile.TecanFileInfo.InfoCreatedAt = DateTime.Now;
-            oFile.TecanFileInfo.InfoCreatedWith = "TecanOpcUa";
-            oFile.TecanFileInfo.InfoDescription = "Measurement created via OPC UA";
-            oFile.TecanFileInfo.InfoType = "";
-            oFile.TecanFileInfo.InfoVersion = "1.0";
-
-            return oFile;
-        }
-
-        /// <summary>
-        /// Creates a TecanMeasurement
-        /// </summary>
-        private TecanMeasurement CreateTecanMeasurement(int nID)
-        {
-            TecanMeasurement oMeasurement = new TecanMeasurement();
-            oMeasurement.ID = nID;
-            oMeasurement.MeasurementClass = "Measurement";
-
-            return oMeasurement;
-        }
-
-        /// <summary>
-        /// Creates a MeasurementManualCycle
-        /// </summary>
-        private MeasurementManualCycle CreateManualCycle(int nID)
-        {
-            MeasurementManualCycle oCycle = new MeasurementManualCycle();
-            oCycle.CycleType = CycleType.Standard;
-            oCycle.Number = 1;
-            oCycle.ID = nID;
-
-            return oCycle;
-        }
-
-        /// <summary>
-        /// Creates a CyclePlate
-        /// </summary>
-        private CyclePlate CreatePlate(string plateName, int nID)
-        {
-            CyclePlate oPlate = new CyclePlate();
-            oPlate.PlateName = plateName;
-            oPlate.ID = nID;
-
-            return oPlate;
-        }
-
-        /// <summary>
-        /// Creates a PlateRange
-        /// </summary>
-        private PlateRange CreateRange(string wellRange, int nID)
-        {
-            PlateRange oRange = new PlateRange();
-            oRange.Range = wellRange;
-            oRange.Auto = true;
-            oRange.ID = nID;
-
-            return oRange;
-        }
-
-        /// <summary>
-        /// Creates a Well
-        /// </summary>
-        private Well CreateWell(int nID)
-        {
-            Well oWell = new Well();
-            oWell.ID = nID;
-
-            return oWell;
-        }
 
         /// <summary>
         /// Sets up the output mechanism for measurement
@@ -978,12 +789,6 @@ namespace TecanOpcUa
 
                             // Calculate well position (e.g., A1, B2, etc.)
                             string wellPosition = $"{(char)('A' + args.Row - 1)}{args.Column}";
-
-                            // Store the measurement data in a dictionary for later use
-                            if (!wellData.ContainsKey(wellPosition))
-                            {
-                                wellData[wellPosition] = args.Value;
-                            }
 
                             Console.WriteLine($"Measurement data received: {args.Value} at well {wellPosition}");
                         }
