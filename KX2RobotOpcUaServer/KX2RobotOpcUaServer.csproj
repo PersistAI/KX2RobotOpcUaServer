@@ -68,6 +68,9 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Tecan\i-control\2.0\Infragistics2.Win.v9.2.dll</HintPath>
     </Reference>
+    <Reference Include="InhecoMTCdll">
+      <HintPath>..\..\..\..\Downloads\InhecoMTCdll.dll</HintPath>
+    </Reference>
     <Reference Include="Interop.MCSLib, Version=2.4.0.0, Culture=neutral, PublicKeyToken=8e50b597b35d6a46">
       <SpecificVersion>False</SpecificVersion>
       <EmbedInteropTypes>True</EmbedInteropTypes>
@@ -436,6 +439,8 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TecanNodeManagerFactory.cs" />
     <Compile Include="tecanopcua.cs" />
+    <Compile Include="TekmaticNodeManagerFactory.cs" />
+    <Compile Include="tekmaticnodeopcua.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

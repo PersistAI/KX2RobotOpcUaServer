@@ -105,7 +105,22 @@ namespace LabEquipmentOpcUa
                     Console.WriteLine("Initializing equipment...");
                     foreach (var equipment in _equipmentManagers)
                     {
-                        equipment.Initialize();
+                        try
+                        {
+                            equipment.Initialize();
+                        }
+                        catch (Exception ex)
+                        {
+                            // Log the error but continue with other equipment
+                            Console.WriteLine($"Error initializing equipment {equipment.GetType().Name}: {ex.Message}");
+                            Console.WriteLine("Server will continue running with other equipment.");
+
+                            // If there's an inner exception, log that too
+                            if (ex.InnerException != null)
+                            {
+                                Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                            }
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -160,9 +175,23 @@ namespace LabEquipmentOpcUa
                 Console.WriteLine("Shutting down equipment...");
                 foreach (var equipment in _equipmentManagers)
                 {
-                    equipment.Shutdown();
+                    try
+                    {
+                        equipment.Shutdown();
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log the error but continue with other equipment
+                        Console.WriteLine($"Error shutting down equipment {equipment.GetType().Name}: {ex.Message}");
+
+                        // If there's an inner exception, log that too
+                        if (ex.InnerException != null)
+                        {
+                            Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                        }
+                    }
                 }
-                Console.WriteLine("Equipment shut down successfully.");
+                Console.WriteLine("Equipment shut down process completed.");
             }
             catch (Exception ex)
             {
@@ -262,6 +291,11 @@ namespace LabEquipmentOpcUa
             var tecanFactory = new TecanOpcUa.TecanNodeManagerFactory(this);
             nodeManagerFactories.Add(tecanFactory);
             _equipmentManagers.Add((IEquipmentNodeManager)tecanFactory);
+
+            // Create the Tekmatic factory
+            var tekmaticFactory = new TekmaticOpcUa.TekmaticNodeManagerFactory(this);
+            nodeManagerFactories.Add(tekmaticFactory);
+            _equipmentManagers.Add((IEquipmentNodeManager)tekmaticFactory);
 
             // Add the node manager factories to the server
             Console.WriteLine("Adding node manager factories to server...");
