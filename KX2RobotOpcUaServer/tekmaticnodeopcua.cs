@@ -143,8 +143,20 @@ namespace TekmaticOpcUa
         {
             try
             {
+                // Check if controller is initialized before trying to send a command
+                if (_inhecoController == null)
+                {
+                    Console.WriteLine($"Cannot send command '{command}': Controller not initialized");
+                    return string.Empty;
+                }
+
                 _inhecoController.WriteOnly(command);
                 return _inhecoController.ReadSync();
+            }
+            catch (IndexOutOfRangeException ex)
+            {
+                Console.WriteLine($"Error sending command '{command}': Index was outside the bounds of the array");
+                return string.Empty;
             }
             catch (Exception ex)
             {
@@ -787,12 +799,17 @@ namespace TekmaticOpcUa
         {
             try
             {
+                // Check if controller is initialized
+                if (_inhecoController == null)
+                    return false;
+
                 // Try to get firmware version to check communication
                 string response = SendCommand("0RFV0");
                 return !string.IsNullOrEmpty(response);
             }
-            catch
+            catch (Exception ex)
             {
+                Console.WriteLine($"Error checking connection status: {ex.Message}");
                 return false;
             }
         }
@@ -852,13 +869,21 @@ namespace TekmaticOpcUa
     /// </summary>
     public class TekmaticNodeManager : CustomNodeManager2, IEquipmentNodeManager, INodeManagerFactory
     {
-        private const int UPDATE_INTERVAL_MS = 1000;
+        private const int NORMAL_INTERVAL_MS = 1000;
+        private const int BACKOFF_INTERVAL_MS = 30000; // 30 seconds
+        private const int MAX_CONSECUTIVE_FAILURES = 3;
 
         // Private fields
         private TekmaticControl _tekmatic;
         private ushort _namespaceIndex;
         private uint _lastUsedId;
         private Timer _updateTimer;
+
+        // Connection state tracking
+        private int _connectionFailureCount = 0;
+        private DateTime _lastConnectionAttemptTime = DateTime.MinValue;
+        private bool _isInBackoffMode = false;
+        private bool _wasConnected = false; // To track connection state changes
 
         // Folders
         private FolderState _tekmaticFolder;
@@ -902,7 +927,7 @@ namespace TekmaticOpcUa
                 _lastUsedId = 0;
 
                 // Start a timer to update the Tekmatic status
-                _updateTimer = new Timer(UpdateTekmaticStatus, null, UPDATE_INTERVAL_MS, UPDATE_INTERVAL_MS);
+                _updateTimer = new Timer(UpdateTekmaticStatus, null, NORMAL_INTERVAL_MS, NORMAL_INTERVAL_MS);
 
                 Console.WriteLine("TekmaticNodeManager constructor completed successfully");
             }
@@ -1011,38 +1036,6 @@ namespace TekmaticOpcUa
                         BaseDataVariableState typeVar = CreateVariable(deviceFolder, "Type", "Type", DataTypeIds.String, ValueRanks.Scalar);
                         typeVar.Value = device.Type;
                         typeVar.ClearChangeMasks(SystemContext, false);
-
-                        // Add a method to connect to this device
-                        MethodState connectMethod = CreateMethod(deviceFolder, "Connect", "Connect");
-
-                        // Define empty input arguments for Connect
-                        connectMethod.InputArguments = new PropertyState<Argument[]>(connectMethod);
-                        connectMethod.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                        connectMethod.InputArguments.BrowseName = BrowseNames.InputArguments;
-                        connectMethod.InputArguments.DisplayName = connectMethod.InputArguments.BrowseName.Name;
-                        connectMethod.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                        connectMethod.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                        connectMethod.InputArguments.DataType = DataTypeIds.Argument;
-                        connectMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
-                        connectMethod.InputArguments.Value = new Argument[0]; // No input arguments
-
-                        // Define output arguments for Connect (returns result code)
-                        connectMethod.OutputArguments = new PropertyState<Argument[]>(connectMethod);
-                        connectMethod.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                        connectMethod.OutputArguments.BrowseName = BrowseNames.OutputArguments;
-                        connectMethod.OutputArguments.DisplayName = connectMethod.OutputArguments.BrowseName.Name;
-                        connectMethod.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                        connectMethod.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                        connectMethod.OutputArguments.DataType = DataTypeIds.Argument;
-                        connectMethod.OutputArguments.ValueRank = ValueRanks.OneDimension;
-
-                        Argument resultArgument = new Argument();
-                        resultArgument.Name = "Result";
-                        resultArgument.Description = new LocalizedText("Result code: 0=success, -1=failure");
-                        resultArgument.DataType = DataTypeIds.Int32;
-                        resultArgument.ValueRank = ValueRanks.Scalar;
-
-                        connectMethod.OutputArguments.Value = new Argument[] { resultArgument };
 
                         // Make sure the folder and its children are properly registered with the address space
                         AddPredefinedNode(SystemContext, deviceFolder);
@@ -1234,76 +1227,6 @@ namespace TekmaticOpcUa
 
                     discoverDevicesMethod.OutputArguments.Value = new Argument[] { deviceCountArgument };
 
-                    // Create Connect method
-                    MethodState connectMethod = CreateMethod(_commandsFolder, "Connect", "Connect");
-
-                    // Define input arguments for Connect (device serial)
-                    connectMethod.InputArguments = new PropertyState<Argument[]>(connectMethod);
-                    connectMethod.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    connectMethod.InputArguments.BrowseName = BrowseNames.InputArguments;
-                    connectMethod.InputArguments.DisplayName = connectMethod.InputArguments.BrowseName.Name;
-                    connectMethod.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    connectMethod.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    connectMethod.InputArguments.DataType = DataTypeIds.Argument;
-                    connectMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
-
-                    Argument serialArgument = new Argument();
-                    serialArgument.Name = "DeviceSerial";
-                    serialArgument.Description = new LocalizedText("Serial number of the device to connect to");
-                    serialArgument.DataType = DataTypeIds.String;
-                    serialArgument.ValueRank = ValueRanks.Scalar;
-
-                    connectMethod.InputArguments.Value = new Argument[] { serialArgument };
-
-                    // Define output arguments for Connect (result code)
-                    connectMethod.OutputArguments = new PropertyState<Argument[]>(connectMethod);
-                    connectMethod.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    connectMethod.OutputArguments.BrowseName = BrowseNames.OutputArguments;
-                    connectMethod.OutputArguments.DisplayName = connectMethod.OutputArguments.BrowseName.Name;
-                    connectMethod.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    connectMethod.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    connectMethod.OutputArguments.DataType = DataTypeIds.Argument;
-                    connectMethod.OutputArguments.ValueRank = ValueRanks.OneDimension;
-
-                    Argument connectResultArgument = new Argument();
-                    connectResultArgument.Name = "Result";
-                    connectResultArgument.Description = new LocalizedText("Result code: 0=success, -1=failure, -2=device not found");
-                    connectResultArgument.DataType = DataTypeIds.Int32;
-                    connectResultArgument.ValueRank = ValueRanks.Scalar;
-
-                    connectMethod.OutputArguments.Value = new Argument[] { connectResultArgument };
-
-                    // Create Disconnect method
-                    MethodState disconnectMethod = CreateMethod(_commandsFolder, "Disconnect", "Disconnect");
-
-                    // Define empty input arguments for Disconnect
-                    disconnectMethod.InputArguments = new PropertyState<Argument[]>(disconnectMethod);
-                    disconnectMethod.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    disconnectMethod.InputArguments.BrowseName = BrowseNames.InputArguments;
-                    disconnectMethod.InputArguments.DisplayName = disconnectMethod.InputArguments.BrowseName.Name;
-                    disconnectMethod.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    disconnectMethod.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    disconnectMethod.InputArguments.DataType = DataTypeIds.Argument;
-                    disconnectMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
-                    disconnectMethod.InputArguments.Value = new Argument[0]; // No input arguments
-
-                    // Define output arguments for Disconnect (result code)
-                    disconnectMethod.OutputArguments = new PropertyState<Argument[]>(disconnectMethod);
-                    disconnectMethod.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    disconnectMethod.OutputArguments.BrowseName = BrowseNames.OutputArguments;
-                    disconnectMethod.OutputArguments.DisplayName = disconnectMethod.OutputArguments.BrowseName.Name;
-                    disconnectMethod.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    disconnectMethod.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    disconnectMethod.OutputArguments.DataType = DataTypeIds.Argument;
-                    disconnectMethod.OutputArguments.ValueRank = ValueRanks.OneDimension;
-
-                    Argument disconnectResultArgument = new Argument();
-                    disconnectResultArgument.Name = "Result";
-                    disconnectResultArgument.Description = new LocalizedText("Result code: 0=success, -1=failure");
-                    disconnectResultArgument.DataType = DataTypeIds.Int32;
-                    disconnectResultArgument.ValueRank = ValueRanks.Scalar;
-
-                    disconnectMethod.OutputArguments.Value = new Argument[] { disconnectResultArgument };
 
                     // Create SetTargetTemperature method
                     MethodState setTemperatureMethod = CreateMethod(_commandsFolder, "SetTargetTemperature", "Set Target Temperature");
@@ -1654,22 +1577,34 @@ namespace TekmaticOpcUa
         }
 
         /// <summary>
-        /// Updates the Tekmatic status variables
+        /// Adjusts the update timer interval based on connection status
         /// </summary>
-        private void UpdateTekmaticStatus(object state)
+        private void AdjustUpdateInterval(bool useBackoff)
+        {
+            if (_updateTimer != null)
+            {
+                _updateTimer.Change(0, useBackoff ? BACKOFF_INTERVAL_MS : NORMAL_INTERVAL_MS);
+
+                if (useBackoff && !_isInBackoffMode)
+                {
+                    Console.WriteLine($"Switching to reduced polling frequency ({BACKOFF_INTERVAL_MS / 1000} seconds) due to connection failures");
+                    _isInBackoffMode = true;
+                }
+                else if (!useBackoff && _isInBackoffMode)
+                {
+                    Console.WriteLine($"Resuming normal polling frequency ({NORMAL_INTERVAL_MS} ms)");
+                    _isInBackoffMode = false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Updates the device status variables
+        /// </summary>
+        private void UpdateDeviceStatus()
         {
             try
             {
-                if (_tekmatic == null)
-                    return;
-
-                // Update the connection status variable
-                if (_isConnectedVariable != null)
-                {
-                    _isConnectedVariable.Value = _tekmatic.IsConnected();
-                    _isConnectedVariable.ClearChangeMasks(SystemContext, false);
-                }
-
                 // Update the clamp status
                 if (_isClampClosedVariable != null)
                 {
@@ -1695,11 +1630,88 @@ namespace TekmaticOpcUa
                     UpdateVariable(slotFolder, "DeviceType", hasDevice ? device.Type : "");
                     UpdateVariable(slotFolder, "DeviceSerial", hasDevice ? device.Serial : "");
 
-                    // Update status variables
-                    UpdateVariable(slotFolder, "Temperature", _tekmatic.GetTemperature(slot));
-                    UpdateVariable(slotFolder, "TargetTemperature", _tekmatic.GetTargetTemperature(slot));
-                    UpdateVariable(slotFolder, "ShakingRpm", _tekmatic.GetShakingRpm(slot));
-                    UpdateVariable(slotFolder, "IsShaking", _tekmatic.IsShaking(slot));
+                    // Only update status variables if the device exists in this slot
+                    if (hasDevice)
+                    {
+                        // Update status variables
+                        UpdateVariable(slotFolder, "Temperature", _tekmatic.GetTemperature(slot));
+                        UpdateVariable(slotFolder, "TargetTemperature", _tekmatic.GetTargetTemperature(slot));
+                        UpdateVariable(slotFolder, "ShakingRpm", _tekmatic.GetShakingRpm(slot));
+                        UpdateVariable(slotFolder, "IsShaking", _tekmatic.IsShaking(slot));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error updating device status: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Updates the Tekmatic status variables with backoff strategy
+        /// </summary>
+        private void UpdateTekmaticStatus(object state)
+        {
+            try
+            {
+                if (_tekmatic == null)
+                    return;
+
+                // Record the time of this connection attempt
+                _lastConnectionAttemptTime = DateTime.Now;
+
+                // Check if the device is connected
+                bool isConnected = _tekmatic.IsConnected();
+
+                // Update the connection status variable
+                if (_isConnectedVariable != null)
+                {
+                    _isConnectedVariable.Value = isConnected;
+                    _isConnectedVariable.ClearChangeMasks(SystemContext, false);
+                }
+
+                // Handle connection state changes and backoff logic
+                if (isConnected)
+                {
+                    // Reset failure count on successful connection
+                    if (_connectionFailureCount > 0)
+                    {
+                        _connectionFailureCount = 0;
+
+                        // If we were in backoff mode, switch back to normal polling
+                        if (_isInBackoffMode)
+                        {
+                            AdjustUpdateInterval(false);
+                        }
+                    }
+
+                    // Log connection recovery if state changed
+                    if (!_wasConnected)
+                    {
+                        Console.WriteLine("Connection to Tekmatic device established");
+                        _wasConnected = true;
+                    }
+
+                    // Only proceed with other updates if the device is connected
+                    UpdateDeviceStatus();
+                }
+                else
+                {
+                    // Increment failure count
+                    _connectionFailureCount++;
+
+                    // Log disconnection if state changed
+                    if (_wasConnected)
+                    {
+                        Console.WriteLine("Connection to Tekmatic device lost");
+                        _wasConnected = false;
+                    }
+
+                    // Check if we need to enter backoff mode
+                    if (_connectionFailureCount >= MAX_CONSECUTIVE_FAILURES && !_isInBackoffMode)
+                    {
+                        AdjustUpdateInterval(true);
+                    }
                 }
             }
             catch (Exception ex)
@@ -1761,18 +1773,6 @@ namespace TekmaticOpcUa
                         int deviceCount = _tekmatic.DiscoverDevices();
                         UpdateDeviceFolders();
                         outputArguments[0] = deviceCount;
-                        return ServiceResult.Good;
-
-                    case "Connect":
-                        // We don't need to connect anymore since we're working directly with slots
-                        // Just return success
-                        outputArguments[0] = 0;
-                        return ServiceResult.Good;
-
-                    case "Disconnect":
-                        // We don't need to disconnect anymore since we're working directly with slots
-                        // Just return success
-                        outputArguments[0] = 0;
                         return ServiceResult.Good;
 
                     case "SetTargetTemperature":
