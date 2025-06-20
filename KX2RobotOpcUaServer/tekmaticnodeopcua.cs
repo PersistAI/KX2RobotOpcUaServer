@@ -64,23 +64,16 @@ namespace TekmaticOpcUa
     /// </summary>
     public class TekmaticControl
     {
-        // Properties to store Tekmatic state
-        private bool _isConnected = false;
-        private bool _isShaking = false;
-        private double _temperature = 37.0;
-        private double _targetTemperature = 37.0;
-        private int _shakingRpm = 0;
-        private int _targetShakingRpm = 0;
+        // Properties to store Tekmatic state for each slot (1-6)
+        private Dictionary<int, bool> _isShaking = new Dictionary<int, bool>();
+        private Dictionary<int, double> _temperature = new Dictionary<int, double>();
+        private Dictionary<int, double> _targetTemperature = new Dictionary<int, double>();
+        private Dictionary<int, int> _shakingRpm = new Dictionary<int, int>();
+        private Dictionary<int, int> _targetShakingRpm = new Dictionary<int, int>();
         private bool _isClamped = false;
 
         // List of discovered devices (one per slot)
         private List<TekmaticDevice> _discoveredDevices = new List<TekmaticDevice>();
-
-        // Currently connected slot
-        private int _connectedSlot = 0;
-
-        // Currently connected device
-        private TekmaticDevice _connectedDevice = null;
 
         // Inheco MTC controller
         private GlobCom _inhecoController;
@@ -96,6 +89,16 @@ namespace TekmaticOpcUa
 
             // Initialize any required resources
             InitializeSettings();
+
+            // Initialize dictionaries for each slot (1-6)
+            for (int slot = 1; slot <= 6; slot++)
+            {
+                _isShaking[slot] = false;
+                _temperature[slot] = 0.0;
+                _targetTemperature[slot] = 0.0;
+                _shakingRpm[slot] = 0;
+                _targetShakingRpm[slot] = 0;
+            }
         }
 
         /// <summary>
@@ -196,12 +199,6 @@ namespace TekmaticOpcUa
             try
             {
                 Console.WriteLine("Shutting down Tekmatic control...");
-
-                // Disconnect from any connected device
-                if (_isConnected)
-                {
-                    Disconnect();
-                }
 
                 // No explicit shutdown method in the DLL, but we can set variables to null
                 _inhecoController = null;
@@ -320,160 +317,56 @@ namespace TekmaticOpcUa
         }
 
         /// <summary>
-        /// Gets the currently connected device
+        /// Gets a device by slot ID
         /// </summary>
-        public TekmaticDevice GetConnectedDevice()
+        /// <param name="slotId">The slot ID (1-6) to get the device for</param>
+        /// <returns>The device in the specified slot, or null if no device is present</returns>
+        public TekmaticDevice GetDeviceBySlot(int slotId)
         {
-            return _connectedDevice;
+            if (slotId < 1 || slotId > 6)
+                return null;
+
+            return _discoveredDevices.FirstOrDefault(d => d.SlotId == slotId);
         }
 
         /// <summary>
-        /// Connect to a Tekmatic device in the specified slot
+        /// Checks if a device is present in the specified slot
         /// </summary>
-        /// <param name="slotId">The slot ID (1-6) to connect to</param>
-        /// <returns>0 for success, -1 for failure, -2 for device not found</returns>
-        public int ConnectToSlot(int slotId)
+        /// <param name="slotId">The slot ID (1-6) to check</param>
+        /// <returns>True if a device is present, false otherwise</returns>
+        public bool HasDeviceInSlot(int slotId)
         {
-            try
-            {
-                if (_connectedSlot == slotId && _isConnected)
-                    return 0; // Already connected to this slot
+            if (slotId < 1 || slotId > 6)
+                return false;
 
-                // Disconnect from any currently connected slot
-                if (_isConnected)
-                {
-                    Disconnect();
-                }
-
-                Console.WriteLine($"Connecting to device in slot {slotId}...");
-
-                // Find the device in the discovered devices list
-                var device = _discoveredDevices.FirstOrDefault(d => d.SlotId == slotId);
-
-                if (device == null || !device.HasDevice)
-                {
-                    Console.WriteLine($"No device found in slot {slotId}");
-                    return -2; // No device in this slot
-                }
-
-                // For Tekmatic devices, we're already connected via USB, so we just need to
-                // set the current slot and initialize it
-
-                // Enable temperature control for this slot
-                string response = SendCommand($"{slotId}ATE1");
-                if (string.IsNullOrEmpty(response) || !response.StartsWith($"{slotId}ate"))
-                {
-                    Console.WriteLine($"Failed to initialize device in slot {slotId}: {response}");
-                    return -1;
-                }
-
-                _isConnected = true;
-                _connectedSlot = slotId;
-                _connectedDevice = device;
-                device.IsConnected = true;
-
-                Console.WriteLine($"Connected to device in slot {slotId}: {device.Name}");
-                return 0; // Success
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error connecting to device: {ex.Message}");
-                return -1; // Error
-            }
+            var device = _discoveredDevices.FirstOrDefault(d => d.SlotId == slotId);
+            return device != null && device.HasDevice;
         }
 
         /// <summary>
-        /// Connect to the first available Tekmatic device
+        /// Gets the device in the specified slot
         /// </summary>
-        public int Connect()
+        /// <param name="slotId">The slot ID (1-6) to get the device for</param>
+        /// <returns>The device in the specified slot, or null if no device is present</returns>
+        public TekmaticDevice GetDeviceInSlot(int slotId)
         {
-            try
-            {
-                if (_isConnected)
-                    return 0; // Already connected
+            if (slotId < 1 || slotId > 6)
+                return null;
 
-                // If we have no discovered devices, discover them now
-                if (_discoveredDevices.Count == 0)
-                {
-                    DiscoverDevices();
-                }
-
-                // Find the first slot with a device
-                var deviceSlot = _discoveredDevices.FirstOrDefault(d => d.HasDevice);
-                if (deviceSlot != null)
-                {
-                    return ConnectToSlot(deviceSlot.SlotId);
-                }
-
-                Console.WriteLine("No Tekmatic devices found to connect to");
-                return -1; // Failed
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error connecting to Tekmatic: {ex.Message}");
-                return -1; // Error
-            }
+            return _discoveredDevices.FirstOrDefault(d => d.SlotId == slotId);
         }
 
         /// <summary>
-        /// Disconnect from the Tekmatic device
+        /// Get the current temperature for the specified slot
         /// </summary>
-        public int Disconnect()
+        /// <param name="slotId">The slot ID (1-6) to get the temperature for</param>
+        /// <returns>The current temperature in degrees Celsius</returns>
+        public double GetTemperature(int slotId)
         {
-            try
-            {
-                if (!_isConnected)
-                    return 0; // Already disconnected
-
-                Console.WriteLine($"Disconnecting from Tekmatic device in slot {_connectedSlot}...");
-
-                // Disable temperature control
-                string response = SendCommand($"{_connectedSlot}ATE0");
-                if (string.IsNullOrEmpty(response) || !response.StartsWith($"{_connectedSlot}ate"))
-                {
-                    Console.WriteLine($"Warning: Failed to disable temperature control: {response}");
-                }
-
-                // Disable shaking if active
-                if (_isShaking)
-                {
-                    response = SendCommand($"{_connectedSlot}ASE0");
-                    if (string.IsNullOrEmpty(response) || !response.StartsWith($"{_connectedSlot}ase"))
-                    {
-                        Console.WriteLine($"Warning: Failed to disable shaking: {response}");
-                    }
-                }
-
-                // Update device status
-                var device = _discoveredDevices.FirstOrDefault(d => d.SlotId == _connectedSlot);
-                if (device != null)
-                {
-                    device.IsConnected = false;
-                }
-
-                _isConnected = false;
-                _connectedDevice = null;
-                _connectedSlot = 0;
-
-                Console.WriteLine("Disconnected from Tekmatic device");
-                return 0; // Success
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error disconnecting from Tekmatic: {ex.Message}");
-                return -1; // Error
-            }
-        }
-
-        /// <summary>
-        /// Get the current temperature for the connected slot
-        /// </summary>
-        public double GetTemperature()
-        {
-            if (!_isConnected || _connectedSlot == 0)
+            if (slotId < 1 || slotId > 6)
                 return 0.0;
 
-            return GetTemperatureForSlot(_connectedSlot);
+            return GetTemperatureForSlot(slotId);
         }
 
         /// <summary>
@@ -483,6 +376,9 @@ namespace TekmaticOpcUa
         {
             try
             {
+                if (slotId < 1 || slotId > 6)
+                    return 0.0;
+
                 // Get the current temperature
                 string response = SendCommand($"{slotId}RAT");
                 if (!string.IsNullOrEmpty(response) && response.Length > 5)
@@ -493,47 +389,36 @@ namespace TekmaticOpcUa
                         // Temperature is reported in 1/10 °C, e.g: 345 = 34.5 °C
                         double temperature = temp / 10.0;
 
-                        // Update the temperature if this is the connected slot
-                        if (slotId == _connectedSlot)
-                        {
-                            _temperature = temperature;
-                        }
+                        // Update the cached temperature for this slot
+                        _temperature[slotId] = temperature;
 
                         return temperature;
                     }
                 }
 
-                // If we couldn't get the temperature, return the last known value if this is the connected slot
-                if (slotId == _connectedSlot)
-                {
-                    return _temperature;
-                }
-
-                return 0.0;
+                // If we couldn't get the temperature, return the last known value
+                return _temperature[slotId];
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error getting temperature for slot {slotId}: {ex.Message}");
 
-                // Return the last known value if this is the connected slot
-                if (slotId == _connectedSlot)
-                {
-                    return _temperature;
-                }
-
-                return 0.0;
+                // Return the last known value
+                return _temperature[slotId];
             }
         }
 
         /// <summary>
-        /// Get the target temperature for the connected slot
+        /// Get the target temperature for the specified slot
         /// </summary>
-        public double GetTargetTemperature()
+        /// <param name="slotId">The slot ID (1-6) to get the target temperature for</param>
+        /// <returns>The target temperature in degrees Celsius</returns>
+        public double GetTargetTemperature(int slotId)
         {
-            if (!_isConnected || _connectedSlot == 0)
+            if (slotId < 1 || slotId > 6)
                 return 0.0;
 
-            return GetTargetTemperatureForSlot(_connectedSlot);
+            return GetTargetTemperatureForSlot(slotId);
         }
 
         /// <summary>
@@ -543,6 +428,9 @@ namespace TekmaticOpcUa
         {
             try
             {
+                if (slotId < 1 || slotId > 6)
+                    return 0.0;
+
                 // Get the target temperature
                 string response = SendCommand($"{slotId}RTT");
                 if (!string.IsNullOrEmpty(response) && response.Length > 5)
@@ -553,47 +441,37 @@ namespace TekmaticOpcUa
                         // Temperature is reported in 1/10 °C, e.g: 345 = 34.5 °C
                         double targetTemperature = temp / 10.0;
 
-                        // Update the target temperature if this is the connected slot
-                        if (slotId == _connectedSlot)
-                        {
-                            _targetTemperature = targetTemperature;
-                        }
+                        // Update the cached target temperature for this slot
+                        _targetTemperature[slotId] = targetTemperature;
 
                         return targetTemperature;
                     }
                 }
 
-                // If we couldn't get the target temperature, return the last known value if this is the connected slot
-                if (slotId == _connectedSlot)
-                {
-                    return _targetTemperature;
-                }
-
-                return 0.0;
+                // If we couldn't get the target temperature, return the last known value
+                return _targetTemperature[slotId];
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error getting target temperature for slot {slotId}: {ex.Message}");
 
-                // Return the last known value if this is the connected slot
-                if (slotId == _connectedSlot)
-                {
-                    return _targetTemperature;
-                }
-
-                return 0.0;
+                // Return the last known value
+                return _targetTemperature[slotId];
             }
         }
 
         /// <summary>
-        /// Set the target temperature for the connected slot
+        /// Set the target temperature for the specified slot
         /// </summary>
-        public int SetTargetTemperature(double temperature)
+        /// <param name="slotId">The slot ID (1-6) to set the target temperature for</param>
+        /// <param name="temperature">The target temperature in degrees Celsius</param>
+        /// <returns>0 for success, -1 for failure</returns>
+        public int SetTargetTemperature(int slotId, double temperature)
         {
-            if (!_isConnected || _connectedSlot == 0)
+            if (slotId < 1 || slotId > 6)
                 return -1;
 
-            return SetTargetTemperatureForSlot(_connectedSlot, temperature);
+            return SetTargetTemperatureForSlot(slotId, temperature);
         }
 
         /// <summary>
@@ -603,6 +481,9 @@ namespace TekmaticOpcUa
         {
             try
             {
+                if (slotId < 1 || slotId > 6)
+                    return -1;
+
                 Console.WriteLine($"Setting target temperature for slot {slotId} to {temperature}°C...");
 
                 // Convert to 1/10 °C for the command
@@ -616,11 +497,8 @@ namespace TekmaticOpcUa
                     return -1;
                 }
 
-                // Update the target temperature if this is the connected slot
-                if (slotId == _connectedSlot)
-                {
-                    _targetTemperature = temperature;
-                }
+                // Update the cached target temperature for this slot
+                _targetTemperature[slotId] = temperature;
 
                 return 0; // Success
             }
@@ -632,14 +510,17 @@ namespace TekmaticOpcUa
         }
 
         /// <summary>
-        /// Enable or disable temperature control for the connected slot
+        /// Enable or disable temperature control for the specified slot
         /// </summary>
-        public int EnableTemperature(bool enable)
+        /// <param name="slotId">The slot ID (1-6) to enable/disable temperature control for</param>
+        /// <param name="enable">True to enable temperature control, false to disable</param>
+        /// <returns>0 for success, -1 for failure</returns>
+        public int EnableTemperature(int slotId, bool enable)
         {
-            if (!_isConnected || _connectedSlot == 0)
+            if (slotId < 1 || slotId > 6)
                 return -1;
 
-            return EnableTemperatureForSlot(_connectedSlot, enable);
+            return EnableTemperatureForSlot(slotId, enable);
         }
 
         /// <summary>
@@ -649,6 +530,9 @@ namespace TekmaticOpcUa
         {
             try
             {
+                if (slotId < 1 || slotId > 6)
+                    return -1;
+
                 Console.WriteLine($"{(enable ? "Enabling" : "Disabling")} temperature control for slot {slotId}...");
 
                 // Enable or disable temperature control
@@ -669,14 +553,16 @@ namespace TekmaticOpcUa
         }
 
         /// <summary>
-        /// Get the current shaking RPM for the connected slot
+        /// Get the current shaking RPM for the specified slot
         /// </summary>
-        public int GetShakingRpm()
+        /// <param name="slotId">The slot ID (1-6) to get the shaking RPM for</param>
+        /// <returns>The current shaking RPM</returns>
+        public int GetShakingRpm(int slotId)
         {
-            if (!_isConnected || _connectedSlot == 0)
+            if (slotId < 1 || slotId > 6)
                 return 0;
 
-            return GetShakingRpmForSlot(_connectedSlot);
+            return GetShakingRpmForSlot(slotId);
         }
 
         /// <summary>
@@ -686,6 +572,9 @@ namespace TekmaticOpcUa
         {
             try
             {
+                if (slotId < 1 || slotId > 6)
+                    return 0;
+
                 // Get the current RPM
                 string response = SendCommand($"{slotId}RSR");
                 if (!string.IsNullOrEmpty(response) && response.Length > 5)
@@ -693,47 +582,37 @@ namespace TekmaticOpcUa
                     int rpm;
                     if (int.TryParse(response.Substring(5), out rpm))
                     {
-                        // Update the RPM if this is the connected slot
-                        if (slotId == _connectedSlot)
-                        {
-                            _shakingRpm = rpm;
-                        }
+                        // Update the cached RPM for this slot
+                        _shakingRpm[slotId] = rpm;
 
                         return rpm;
                     }
                 }
 
-                // If we couldn't get the RPM, return the last known value if this is the connected slot
-                if (slotId == _connectedSlot)
-                {
-                    return _shakingRpm;
-                }
-
-                return 0;
+                // If we couldn't get the RPM, return the last known value
+                return _shakingRpm[slotId];
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error getting shaking RPM for slot {slotId}: {ex.Message}");
 
-                // Return the last known value if this is the connected slot
-                if (slotId == _connectedSlot)
-                {
-                    return _shakingRpm;
-                }
-
-                return 0;
+                // Return the last known value
+                return _shakingRpm[slotId];
             }
         }
 
         /// <summary>
-        /// Set the target shaking RPM for the connected slot
+        /// Set the target shaking RPM for the specified slot
         /// </summary>
-        public int SetShakingRpm(int rpm)
+        /// <param name="slotId">The slot ID (1-6) to set the shaking RPM for</param>
+        /// <param name="rpm">The target shaking RPM</param>
+        /// <returns>0 for success, -1 for failure</returns>
+        public int SetShakingRpm(int slotId, int rpm)
         {
-            if (!_isConnected || _connectedSlot == 0)
+            if (slotId < 1 || slotId > 6)
                 return -1;
 
-            return SetShakingRpmForSlot(_connectedSlot, rpm);
+            return SetShakingRpmForSlot(slotId, rpm);
         }
 
         /// <summary>
@@ -743,6 +622,9 @@ namespace TekmaticOpcUa
         {
             try
             {
+                if (slotId < 1 || slotId > 6)
+                    return -1;
+
                 Console.WriteLine($"Setting shaking RPM for slot {slotId} to {rpm}...");
 
                 // Set the target RPM
@@ -753,16 +635,13 @@ namespace TekmaticOpcUa
                     return -1;
                 }
 
-                // Update the target RPM if this is the connected slot
-                if (slotId == _connectedSlot)
-                {
-                    _targetShakingRpm = rpm;
+                // Update the cached target RPM for this slot
+                _targetShakingRpm[slotId] = rpm;
 
-                    // If shaking is enabled, update the current RPM
-                    if (_isShaking)
-                    {
-                        _shakingRpm = rpm;
-                    }
+                // If shaking is enabled, update the current RPM
+                if (_isShaking.ContainsKey(slotId) && _isShaking[slotId])
+                {
+                    _shakingRpm[slotId] = rpm;
                 }
 
                 return 0; // Success
@@ -775,14 +654,17 @@ namespace TekmaticOpcUa
         }
 
         /// <summary>
-        /// Enable or disable shaking for the connected slot
+        /// Enable or disable shaking for the specified slot
         /// </summary>
-        public int EnableShaking(bool enable)
+        /// <param name="slotId">The slot ID (1-6) to enable/disable shaking for</param>
+        /// <param name="enable">True to enable shaking, false to disable</param>
+        /// <returns>0 for success, -1 for failure</returns>
+        public int EnableShaking(int slotId, bool enable)
         {
-            if (!_isConnected || _connectedSlot == 0)
+            if (slotId < 1 || slotId > 6)
                 return -1;
 
-            return EnableShakingForSlot(_connectedSlot, enable);
+            return EnableShakingForSlot(slotId, enable);
         }
 
         /// <summary>
@@ -792,6 +674,9 @@ namespace TekmaticOpcUa
         {
             try
             {
+                if (slotId < 1 || slotId > 6)
+                    return -1;
+
                 Console.WriteLine($"{(enable ? "Enabling" : "Disabling")} shaking for slot {slotId}...");
 
                 // Enable or disable shaking
@@ -802,20 +687,17 @@ namespace TekmaticOpcUa
                     return -1;
                 }
 
-                // Update the shaking state if this is the connected slot
-                if (slotId == _connectedSlot)
-                {
-                    _isShaking = enable;
+                // Update the cached shaking state for this slot
+                _isShaking[slotId] = enable;
 
-                    // Update the current RPM based on the shaking state
-                    if (_isShaking)
-                    {
-                        _shakingRpm = _targetShakingRpm;
-                    }
-                    else
-                    {
-                        _shakingRpm = 0;
-                    }
+                // Update the current RPM based on the shaking state
+                if (enable)
+                {
+                    _shakingRpm[slotId] = _targetShakingRpm[slotId];
+                }
+                else
+                {
+                    _shakingRpm[slotId] = 0;
                 }
 
                 return 0; // Success
@@ -832,9 +714,6 @@ namespace TekmaticOpcUa
         /// </summary>
         public bool IsClampClosed()
         {
-            if (!_isConnected)
-                return false;
-
             try
             {
                 // Get the clamp status
@@ -864,9 +743,6 @@ namespace TekmaticOpcUa
         /// </summary>
         public int SetClampState(bool closed)
         {
-            if (!_isConnected)
-                return -1;
-
             try
             {
                 Console.WriteLine($"{(closed ? "Closing" : "Opening")} clamps...");
@@ -891,19 +767,34 @@ namespace TekmaticOpcUa
         }
 
         /// <summary>
-        /// Check if device is connected
+        /// Check if a device is shaking in the specified slot
         /// </summary>
-        public bool IsConnected()
+        /// <param name="slotId">The slot ID (1-6) to check</param>
+        /// <returns>True if the device is shaking, false otherwise</returns>
+        public bool IsShaking(int slotId)
         {
-            return _isConnected;
+            if (slotId < 1 || slotId > 6)
+                return false;
+
+            return _isShaking.ContainsKey(slotId) && _isShaking[slotId];
         }
 
         /// <summary>
-        /// Check if device is shaking
+        /// Check if we can communicate with the device
         /// </summary>
-        public bool IsShaking()
+        /// <returns>True if we can communicate with the device, false otherwise</returns>
+        public bool IsConnected()
         {
-            return _isShaking;
+            try
+            {
+                // Try to get firmware version to check communication
+                string response = SendCommand("0RFV0");
+                return !string.IsNullOrEmpty(response);
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         /// <summary>
@@ -911,9 +802,6 @@ namespace TekmaticOpcUa
         /// </summary>
         public string GetErrorCodes()
         {
-            if (!_isConnected)
-                return string.Empty;
-
             try
             {
                 // Get the error codes
@@ -937,9 +825,6 @@ namespace TekmaticOpcUa
         /// </summary>
         public int ClearErrorCodes()
         {
-            if (!_isConnected)
-                return -1;
-
             try
             {
                 Console.WriteLine("Clearing error codes...");
@@ -989,14 +874,17 @@ namespace TekmaticOpcUa
         private BaseDataVariableState _targetShakingRpmVariable;
         private BaseDataVariableState _isShakingVariable;
         private BaseDataVariableState _isClampClosedVariable;
+        private BaseDataVariableState _deviceCountVariable;
         private BaseDataVariableState _serialNumberVariable;
         private BaseDataVariableState _deviceNameVariable;
         private BaseDataVariableState _deviceTypeVariable;
         private BaseDataVariableState _connectedDeviceSerialVariable;
-        private BaseDataVariableState _deviceCountVariable;
 
         // List to keep track of device variables
         private List<FolderState> _deviceFolders = new List<FolderState>();
+
+        // Dictionary to keep track of slot folders
+        private Dictionary<int, FolderState> _slotFolders = new Dictionary<int, FolderState>();
 
         // Constructor
         public TekmaticNodeManager(
@@ -1180,19 +1068,19 @@ namespace TekmaticOpcUa
         {
             try
             {
-                Console.WriteLine("TekmaticNodeManager.Shutdown called - disconnecting from device");
-
-                // Disconnect from the device
-                if (_tekmatic != null)
-                {
-                    _tekmatic.Disconnect();
-                }
+                Console.WriteLine("TekmaticNodeManager.Shutdown called");
 
                 // Stop the update timer
                 if (_updateTimer != null)
                 {
                     _updateTimer.Dispose();
                     _updateTimer = null;
+                }
+
+                // Shutdown the Tekmatic control
+                if (_tekmatic != null)
+                {
+                    _tekmatic.Shutdown();
                 }
             }
             catch (Exception ex)
@@ -1275,6 +1163,41 @@ namespace TekmaticOpcUa
                     // Add device count variable
                     _deviceCountVariable = CreateVariable(_discoveredDevicesFolder, "DeviceCount", "Device Count", DataTypeIds.Int32, ValueRanks.Scalar);
                     _deviceCountVariable.Value = 0;
+
+                    // Create a folder for each slot (1-6)
+                    FolderState slotsFolder = CreateFolder(_statusFolder, "Slots", "Slots");
+                    for (int slot = 1; slot <= 6; slot++)
+                    {
+                        // Create a folder for this slot
+                        FolderState slotFolder = CreateFolder(slotsFolder, $"Slot{slot}", $"Slot {slot}");
+                        _slotFolders[slot] = slotFolder;
+
+                        // Add device info variables
+                        BaseDataVariableState hasDeviceVar = CreateVariable(slotFolder, "HasDevice", "Has Device", DataTypeIds.Boolean, ValueRanks.Scalar);
+                        hasDeviceVar.Value = false;
+
+                        BaseDataVariableState deviceNameVar = CreateVariable(slotFolder, "DeviceName", "Device Name", DataTypeIds.String, ValueRanks.Scalar);
+                        deviceNameVar.Value = "No Device";
+
+                        BaseDataVariableState deviceTypeVar = CreateVariable(slotFolder, "DeviceType", "Device Type", DataTypeIds.String, ValueRanks.Scalar);
+                        deviceTypeVar.Value = string.Empty;
+
+                        BaseDataVariableState deviceSerialVar = CreateVariable(slotFolder, "DeviceSerial", "Device Serial", DataTypeIds.String, ValueRanks.Scalar);
+                        deviceSerialVar.Value = string.Empty;
+
+                        // Add status variables
+                        BaseDataVariableState tempVar = CreateVariable(slotFolder, "Temperature", "Temperature", DataTypeIds.Double, ValueRanks.Scalar);
+                        tempVar.Value = 0.0;
+
+                        BaseDataVariableState targetTempVar = CreateVariable(slotFolder, "TargetTemperature", "Target Temperature", DataTypeIds.Double, ValueRanks.Scalar);
+                        targetTempVar.Value = 0.0;
+
+                        BaseDataVariableState rpmVar = CreateVariable(slotFolder, "ShakingRpm", "Shaking RPM", DataTypeIds.Int32, ValueRanks.Scalar);
+                        rpmVar.Value = 0;
+
+                        BaseDataVariableState isShakingVar = CreateVariable(slotFolder, "IsShaking", "Is Shaking", DataTypeIds.Boolean, ValueRanks.Scalar);
+                        isShakingVar.Value = false;
+                    }
 
                     // Create commands folder
                     _commandsFolder = CreateFolder(_tekmaticFolder, "Commands", "Commands");
@@ -1395,13 +1318,19 @@ namespace TekmaticOpcUa
                     setTemperatureMethod.InputArguments.DataType = DataTypeIds.Argument;
                     setTemperatureMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
 
+                    Argument slotArgument = new Argument();
+                    slotArgument.Name = "SlotId";
+                    slotArgument.Description = new LocalizedText("Slot ID (1-6)");
+                    slotArgument.DataType = DataTypeIds.Int32;
+                    slotArgument.ValueRank = ValueRanks.Scalar;
+
                     Argument temperatureArgument = new Argument();
                     temperatureArgument.Name = "Temperature";
                     temperatureArgument.Description = new LocalizedText("Target temperature in degrees Celsius");
                     temperatureArgument.DataType = DataTypeIds.Double;
                     temperatureArgument.ValueRank = ValueRanks.Scalar;
 
-                    setTemperatureMethod.InputArguments.Value = new Argument[] { temperatureArgument };
+                    setTemperatureMethod.InputArguments.Value = new Argument[] { slotArgument, temperatureArgument };
 
                     // Define output arguments for SetTargetTemperature (result code)
                     setTemperatureMethod.OutputArguments = new PropertyState<Argument[]>(setTemperatureMethod);
@@ -1434,13 +1363,19 @@ namespace TekmaticOpcUa
                     enableTemperatureMethod.InputArguments.DataType = DataTypeIds.Argument;
                     enableTemperatureMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
 
+                    Argument slotArgument2 = new Argument();
+                    slotArgument2.Name = "SlotId";
+                    slotArgument2.Description = new LocalizedText("Slot ID (1-6)");
+                    slotArgument2.DataType = DataTypeIds.Int32;
+                    slotArgument2.ValueRank = ValueRanks.Scalar;
+
                     Argument enableTempArgument = new Argument();
                     enableTempArgument.Name = "Enable";
                     enableTempArgument.Description = new LocalizedText("True to enable temperature control, false to disable");
                     enableTempArgument.DataType = DataTypeIds.Boolean;
                     enableTempArgument.ValueRank = ValueRanks.Scalar;
 
-                    enableTemperatureMethod.InputArguments.Value = new Argument[] { enableTempArgument };
+                    enableTemperatureMethod.InputArguments.Value = new Argument[] { slotArgument2, enableTempArgument };
 
                     // Define output arguments for EnableTemperature (result code)
                     enableTemperatureMethod.OutputArguments = new PropertyState<Argument[]>(enableTemperatureMethod);
@@ -1473,13 +1408,19 @@ namespace TekmaticOpcUa
                     setRpmMethod.InputArguments.DataType = DataTypeIds.Argument;
                     setRpmMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
 
+                    Argument slotArgument3 = new Argument();
+                    slotArgument3.Name = "SlotId";
+                    slotArgument3.Description = new LocalizedText("Slot ID (1-6)");
+                    slotArgument3.DataType = DataTypeIds.Int32;
+                    slotArgument3.ValueRank = ValueRanks.Scalar;
+
                     Argument rpmArgument = new Argument();
                     rpmArgument.Name = "Rpm";
                     rpmArgument.Description = new LocalizedText("Target shaking RPM");
                     rpmArgument.DataType = DataTypeIds.Int32;
                     rpmArgument.ValueRank = ValueRanks.Scalar;
 
-                    setRpmMethod.InputArguments.Value = new Argument[] { rpmArgument };
+                    setRpmMethod.InputArguments.Value = new Argument[] { slotArgument3, rpmArgument };
 
                     // Define output arguments for SetShakingRpm (result code)
                     setRpmMethod.OutputArguments = new PropertyState<Argument[]>(setRpmMethod);
@@ -1512,13 +1453,19 @@ namespace TekmaticOpcUa
                     enableShakingMethod.InputArguments.DataType = DataTypeIds.Argument;
                     enableShakingMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
 
+                    Argument slotArgument4 = new Argument();
+                    slotArgument4.Name = "SlotId";
+                    slotArgument4.Description = new LocalizedText("Slot ID (1-6)");
+                    slotArgument4.DataType = DataTypeIds.Int32;
+                    slotArgument4.ValueRank = ValueRanks.Scalar;
+
                     Argument enableArgument = new Argument();
                     enableArgument.Name = "Enable";
                     enableArgument.Description = new LocalizedText("True to enable shaking, false to disable");
                     enableArgument.DataType = DataTypeIds.Boolean;
                     enableArgument.ValueRank = ValueRanks.Scalar;
 
-                    enableShakingMethod.InputArguments.Value = new Argument[] { enableArgument };
+                    enableShakingMethod.InputArguments.Value = new Argument[] { slotArgument4, enableArgument };
 
                     // Define output arguments for EnableShaking (result code)
                     enableShakingMethod.OutputArguments = new PropertyState<Argument[]>(enableShakingMethod);
@@ -1716,136 +1663,87 @@ namespace TekmaticOpcUa
                 if (_tekmatic == null)
                     return;
 
-                // Update the status variables
+                // Update the connection status variable
                 if (_isConnectedVariable != null)
                 {
                     _isConnectedVariable.Value = _tekmatic.IsConnected();
                     _isConnectedVariable.ClearChangeMasks(SystemContext, false);
                 }
 
-                // Only update the other variables if connected
-                if (_tekmatic.IsConnected())
+                // Update the clamp status
+                if (_isClampClosedVariable != null)
                 {
-                    if (_temperatureVariable != null)
-                    {
-                        _temperatureVariable.Value = _tekmatic.GetTemperature();
-                        _temperatureVariable.ClearChangeMasks(SystemContext, false);
-                    }
-
-                    if (_targetTemperatureVariable != null)
-                    {
-                        _targetTemperatureVariable.Value = _tekmatic.GetTargetTemperature();
-                        _targetTemperatureVariable.ClearChangeMasks(SystemContext, false);
-                    }
-
-                    if (_shakingRpmVariable != null)
-                    {
-                        _shakingRpmVariable.Value = _tekmatic.GetShakingRpm();
-                        _shakingRpmVariable.ClearChangeMasks(SystemContext, false);
-                    }
-
-                    if (_isShakingVariable != null)
-                    {
-                        _isShakingVariable.Value = _tekmatic.IsShaking();
-                        _isShakingVariable.ClearChangeMasks(SystemContext, false);
-                    }
-
-                    if (_isClampClosedVariable != null)
-                    {
-                        _isClampClosedVariable.Value = _tekmatic.IsClampClosed();
-                        _isClampClosedVariable.ClearChangeMasks(SystemContext, false);
-                    }
-
-                    // Update device info
-                    var device = _tekmatic.GetConnectedDevice();
-                    if (device != null)
-                    {
-                        if (_serialNumberVariable != null)
-                        {
-                            _serialNumberVariable.Value = device.Serial;
-                            _serialNumberVariable.ClearChangeMasks(SystemContext, false);
-                        }
-
-                        if (_deviceNameVariable != null)
-                        {
-                            _deviceNameVariable.Value = device.Name;
-                            _deviceNameVariable.ClearChangeMasks(SystemContext, false);
-                        }
-
-                        if (_deviceTypeVariable != null)
-                        {
-                            _deviceTypeVariable.Value = device.Type;
-                            _deviceTypeVariable.ClearChangeMasks(SystemContext, false);
-                        }
-
-                        if (_connectedDeviceSerialVariable != null)
-                        {
-                            _connectedDeviceSerialVariable.Value = device.Serial;
-                            _connectedDeviceSerialVariable.ClearChangeMasks(SystemContext, false);
-                        }
-                    }
+                    _isClampClosedVariable.Value = _tekmatic.IsClampClosed();
+                    _isClampClosedVariable.ClearChangeMasks(SystemContext, false);
                 }
-                else
+
+                // Update status for each slot
+                for (int slot = 1; slot <= 6; slot++)
                 {
-                    // Clear device info if not connected
-                    if (_serialNumberVariable != null)
-                    {
-                        _serialNumberVariable.Value = string.Empty;
-                        _serialNumberVariable.ClearChangeMasks(SystemContext, false);
-                    }
+                    // Get the slot folder
+                    FolderState slotFolder = _slotFolders.ContainsKey(slot) ? _slotFolders[slot] : null;
+                    if (slotFolder == null)
+                        continue;
 
-                    if (_deviceNameVariable != null)
-                    {
-                        _deviceNameVariable.Value = string.Empty;
-                        _deviceNameVariable.ClearChangeMasks(SystemContext, false);
-                    }
+                    // Get the device in this slot
+                    var device = _tekmatic.GetDeviceBySlot(slot);
+                    bool hasDevice = device != null && device.HasDevice;
 
-                    if (_deviceTypeVariable != null)
-                    {
-                        _deviceTypeVariable.Value = string.Empty;
-                        _deviceTypeVariable.ClearChangeMasks(SystemContext, false);
-                    }
+                    // Update device info variables
+                    UpdateVariable(slotFolder, "HasDevice", hasDevice);
+                    UpdateVariable(slotFolder, "DeviceName", hasDevice ? device.Name : "No Device");
+                    UpdateVariable(slotFolder, "DeviceType", hasDevice ? device.Type : "");
+                    UpdateVariable(slotFolder, "DeviceSerial", hasDevice ? device.Serial : "");
 
-                    if (_connectedDeviceSerialVariable != null)
-                    {
-                        _connectedDeviceSerialVariable.Value = string.Empty;
-                        _connectedDeviceSerialVariable.ClearChangeMasks(SystemContext, false);
-                    }
-
-                    if (_temperatureVariable != null)
-                    {
-                        _temperatureVariable.Value = 0.0;
-                        _temperatureVariable.ClearChangeMasks(SystemContext, false);
-                    }
-
-                    if (_targetTemperatureVariable != null)
-                    {
-                        _targetTemperatureVariable.Value = 0.0;
-                        _targetTemperatureVariable.ClearChangeMasks(SystemContext, false);
-                    }
-
-                    if (_shakingRpmVariable != null)
-                    {
-                        _shakingRpmVariable.Value = 0;
-                        _shakingRpmVariable.ClearChangeMasks(SystemContext, false);
-                    }
-
-                    if (_isShakingVariable != null)
-                    {
-                        _isShakingVariable.Value = false;
-                        _isShakingVariable.ClearChangeMasks(SystemContext, false);
-                    }
-
-                    if (_isClampClosedVariable != null)
-                    {
-                        _isClampClosedVariable.Value = false;
-                        _isClampClosedVariable.ClearChangeMasks(SystemContext, false);
-                    }
+                    // Update status variables
+                    UpdateVariable(slotFolder, "Temperature", _tekmatic.GetTemperature(slot));
+                    UpdateVariable(slotFolder, "TargetTemperature", _tekmatic.GetTargetTemperature(slot));
+                    UpdateVariable(slotFolder, "ShakingRpm", _tekmatic.GetShakingRpm(slot));
+                    UpdateVariable(slotFolder, "IsShaking", _tekmatic.IsShaking(slot));
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error updating Tekmatic status: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Helper method to update a variable in a folder
+        /// </summary>
+        private void UpdateVariable(FolderState folder, string name, object value)
+        {
+            try
+            {
+                // Find the variable by name
+                BaseDataVariableState variable = null;
+
+                // Create a list to hold the children
+                List<BaseInstanceState> children = new List<BaseInstanceState>();
+
+                // Get the children using the proper method with context
+                folder.GetChildren(SystemContext, children);
+
+                // Now iterate through the list
+                foreach (var child in children)
+                {
+                    if (child is BaseDataVariableState && child.BrowseName.Name == name)
+                    {
+                        variable = (BaseDataVariableState)child;
+                        break;
+                    }
+                }
+
+                // Update the variable if found
+                if (variable != null)
+                {
+                    variable.Value = value;
+                    variable.ClearChangeMasks(SystemContext, false);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error updating variable {name}: {ex.Message}");
             }
         }
 
@@ -1866,104 +1764,60 @@ namespace TekmaticOpcUa
                         return ServiceResult.Good;
 
                     case "Connect":
-                        // Check if this is a device-specific Connect method
-                        if (methodState.Parent != null && methodState.Parent.BrowseName.Name.StartsWith("Device_"))
-                        {
-                            // Get the device from the folder name
-                            string folderName = methodState.Parent.BrowseName.Name;
-                            string deviceSerial = folderName.Replace("Device_", "");
-
-                            // Find the device in the discovered devices list
-                            var devices = _tekmatic.GetDiscoveredDevices();
-                            var device = devices.FirstOrDefault(d => d.HasDevice && d.Serial == deviceSerial);
-
-                            if (device != null)
-                            {
-                                // Connect to the device slot
-                                int result = _tekmatic.ConnectToSlot(device.SlotId);
-                                outputArguments[0] = result;
-                                return ServiceResult.Good;
-                            }
-                            else
-                            {
-                                return ServiceResult.Create(StatusCodes.BadInvalidArgument, "Device not found");
-                            }
-                        }
-                        else if (inputArguments.Count > 0)
-                        {
-                            // This is the general Connect method with a slot ID parameter
-                            int slotId;
-                            if (int.TryParse(inputArguments[0].ToString(), out slotId))
-                            {
-                                int result = _tekmatic.ConnectToSlot(slotId);
-                                outputArguments[0] = result;
-                                return ServiceResult.Good;
-                            }
-                            else
-                            {
-                                // Try to connect by serial number
-                                string deviceSerial = inputArguments[0].ToString();
-                                var devices = _tekmatic.GetDiscoveredDevices();
-                                var device = devices.FirstOrDefault(d => d.HasDevice && d.Serial == deviceSerial);
-
-                                if (device != null)
-                                {
-                                    int result = _tekmatic.ConnectToSlot(device.SlotId);
-                                    outputArguments[0] = result;
-                                    return ServiceResult.Good;
-                                }
-                                else
-                                {
-                                    return ServiceResult.Create(StatusCodes.BadInvalidArgument, "Device not found");
-                                }
-                            }
-                        }
-                        return ServiceResult.Create(StatusCodes.BadInvalidArgument, "Invalid slot ID or serial");
+                        // We don't need to connect anymore since we're working directly with slots
+                        // Just return success
+                        outputArguments[0] = 0;
+                        return ServiceResult.Good;
 
                     case "Disconnect":
-                        int disconnectResult = _tekmatic.Disconnect();
-                        outputArguments[0] = disconnectResult;
+                        // We don't need to disconnect anymore since we're working directly with slots
+                        // Just return success
+                        outputArguments[0] = 0;
                         return ServiceResult.Good;
 
                     case "SetTargetTemperature":
-                        if (inputArguments.Count > 0)
+                        if (inputArguments.Count > 1)
                         {
-                            double temperature = Convert.ToDouble(inputArguments[0]);
-                            int result = _tekmatic.SetTargetTemperature(temperature);
+                            int slotId = Convert.ToInt32(inputArguments[0]);
+                            double temperature = Convert.ToDouble(inputArguments[1]);
+                            int result = _tekmatic.SetTargetTemperature(slotId, temperature);
                             outputArguments[0] = result;
                             return ServiceResult.Good;
                         }
-                        return ServiceResult.Create(StatusCodes.BadInvalidArgument, "Invalid temperature");
+                        return ServiceResult.Create(StatusCodes.BadInvalidArgument, "Invalid slot ID or temperature");
 
                     case "EnableTemperature":
-                        if (inputArguments.Count > 0)
+                        if (inputArguments.Count > 1)
                         {
-                            bool enable = Convert.ToBoolean(inputArguments[0]);
-                            int result = _tekmatic.EnableTemperature(enable);
+                            int slotId = Convert.ToInt32(inputArguments[0]);
+                            bool enable = Convert.ToBoolean(inputArguments[1]);
+                            int result = _tekmatic.EnableTemperature(slotId, enable);
                             outputArguments[0] = result;
                             return ServiceResult.Good;
                         }
-                        return ServiceResult.Create(StatusCodes.BadInvalidArgument, "Invalid enable value");
+                        return ServiceResult.Create(StatusCodes.BadInvalidArgument, "Invalid slot ID or enable value");
 
                     case "SetShakingRpm":
-                        if (inputArguments.Count > 0)
+                        if (inputArguments.Count > 1)
                         {
-                            int rpm = Convert.ToInt32(inputArguments[0]);
-                            int result = _tekmatic.SetShakingRpm(rpm);
+                            int slotId = Convert.ToInt32(inputArguments[0]);
+                            int rpm = Convert.ToInt32(inputArguments[1]);
+                            int result = _tekmatic.SetShakingRpm(slotId, rpm);
                             outputArguments[0] = result;
                             return ServiceResult.Good;
                         }
-                        return ServiceResult.Create(StatusCodes.BadInvalidArgument, "Invalid RPM");
+                        return ServiceResult.Create(StatusCodes.BadInvalidArgument, "Invalid slot ID or RPM");
 
                     case "EnableShaking":
-                        if (inputArguments.Count > 0)
+                        if (inputArguments.Count > 1)
                         {
-                            bool enable = Convert.ToBoolean(inputArguments[0]);
-                            int result = _tekmatic.EnableShaking(enable);
+                            int slotId = Convert.ToInt32(inputArguments[0]);
+                            bool enable = Convert.ToBoolean(inputArguments[1]);
+                            int result = _tekmatic.EnableShaking(slotId, enable);
                             outputArguments[0] = result;
                             return ServiceResult.Good;
                         }
-                        return ServiceResult.Create(StatusCodes.BadInvalidArgument, "Invalid enable value");
+                        return ServiceResult.Create(StatusCodes.BadInvalidArgument, "Invalid slot ID or enable value");
 
                     case "SetClampState":
                         if (inputArguments.Count > 0)
