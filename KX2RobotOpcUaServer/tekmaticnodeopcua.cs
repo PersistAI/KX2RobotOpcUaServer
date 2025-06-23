@@ -150,8 +150,21 @@ namespace TekmaticOpcUa
                     return string.Empty;
                 }
 
+                // Send the command
+                Console.WriteLine($"Sending command: {command}");
                 _inhecoController.WriteOnly(command);
-                return _inhecoController.ReadSync();
+
+                // Wait for the device to process the command
+                Thread.Sleep(100);
+
+                // Read the response
+                string response = _inhecoController.ReadSync();
+                Console.WriteLine($"Received response: {response}");
+
+                // Wait before allowing another command to be sent
+                Thread.Sleep(100);
+
+                return response;
             }
             catch (IndexOutOfRangeException ex)
             {
