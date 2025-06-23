@@ -910,6 +910,27 @@ namespace TekmaticOpcUa
                 return -1; // Error
             }
         }
+
+        /// <summary>
+        /// Executes a raw command directly on the device
+        /// </summary>
+        /// <param name="command">The full command string including slot ID prefix (e.g., '1SSR300')</param>
+        /// <returns>The response from the device</returns>
+        public string ExecuteRawCommand(string command)
+        {
+            try
+            {
+                Console.WriteLine($"Executing raw command: {command}");
+
+                // Send the command directly to the device
+                return SendCommand(command);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error executing raw command '{command}': {ex.Message}");
+                return $"Error: {ex.Message}";
+            }
+        }
     }
 
     /// <summary>
@@ -1467,6 +1488,45 @@ namespace TekmaticOpcUa
                     clearErrorCodesMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
                     clearErrorCodesMethod.InputArguments.Value = new Argument[0]; // No input arguments
 
+                    // Create ExecuteRawCommand method
+                    MethodState executeRawCommandMethod = CreateMethod(_commandsFolder, "ExecuteRawCommand", "Execute Raw Command");
+
+                    // Define input arguments for ExecuteRawCommand
+                    executeRawCommandMethod.InputArguments = new PropertyState<Argument[]>(executeRawCommandMethod);
+                    executeRawCommandMethod.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                    executeRawCommandMethod.InputArguments.BrowseName = BrowseNames.InputArguments;
+                    executeRawCommandMethod.InputArguments.DisplayName = executeRawCommandMethod.InputArguments.BrowseName.Name;
+                    executeRawCommandMethod.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                    executeRawCommandMethod.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                    executeRawCommandMethod.InputArguments.DataType = DataTypeIds.Argument;
+                    executeRawCommandMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
+
+                    Argument commandArgument = new Argument();
+                    commandArgument.Name = "Command";
+                    commandArgument.Description = new LocalizedText("Full command string including slot ID prefix (e.g., '1SSR300')");
+                    commandArgument.DataType = DataTypeIds.String;
+                    commandArgument.ValueRank = ValueRanks.Scalar;
+
+                    executeRawCommandMethod.InputArguments.Value = new Argument[] { commandArgument };
+
+                    // Define output arguments for ExecuteRawCommand (response string)
+                    executeRawCommandMethod.OutputArguments = new PropertyState<Argument[]>(executeRawCommandMethod);
+                    executeRawCommandMethod.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                    executeRawCommandMethod.OutputArguments.BrowseName = BrowseNames.OutputArguments;
+                    executeRawCommandMethod.OutputArguments.DisplayName = executeRawCommandMethod.OutputArguments.BrowseName.Name;
+                    executeRawCommandMethod.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                    executeRawCommandMethod.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                    executeRawCommandMethod.OutputArguments.DataType = DataTypeIds.Argument;
+                    executeRawCommandMethod.OutputArguments.ValueRank = ValueRanks.OneDimension;
+
+                    Argument responseArgument = new Argument();
+                    responseArgument.Name = "Response";
+                    responseArgument.Description = new LocalizedText("Response from the device");
+                    responseArgument.DataType = DataTypeIds.String;
+                    responseArgument.ValueRank = ValueRanks.Scalar;
+
+                    executeRawCommandMethod.OutputArguments.Value = new Argument[] { responseArgument };
+
                     // Define output arguments for ClearErrorCodes (result code)
                     clearErrorCodesMethod.OutputArguments = new PropertyState<Argument[]>(clearErrorCodesMethod);
                     clearErrorCodesMethod.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
@@ -1838,6 +1898,17 @@ namespace TekmaticOpcUa
                         int clearResult = _tekmatic.ClearErrorCodes();
                         outputArguments[0] = clearResult;
                         return ServiceResult.Good;
+
+                    case "ExecuteRawCommand":
+                        if (inputArguments.Count > 0)
+                        {
+                            string command = Convert.ToString(inputArguments[0]);
+                            Console.WriteLine($"Executing raw command via OPC UA: {command}");
+                            string response = _tekmatic.ExecuteRawCommand(command);
+                            outputArguments[0] = response;
+                            return ServiceResult.Good;
+                        }
+                        return ServiceResult.Create(StatusCodes.BadInvalidArgument, "Missing command argument");
 
                     default:
                         return ServiceResult.Create(StatusCodes.BadMethodInvalid, "Method not found");
