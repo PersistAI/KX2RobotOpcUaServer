@@ -974,8 +974,8 @@ namespace TekmaticOpcUa
                 _tekmatic = tekmatic;
                 _lastUsedId = 0;
 
-                // Start a timer to update the Tekmatic status
-                _updateTimer = new Timer(UpdateTekmaticStatus, null, NORMAL_INTERVAL_MS, NORMAL_INTERVAL_MS);
+                // Start a timer to update the Tekmatic status with reduced frequency (5 seconds)
+                _updateTimer = new Timer(UpdateTekmaticStatus, null, 5000, 5000);
 
                 Console.WriteLine("TekmaticNodeManager constructor completed successfully");
             }
@@ -1159,51 +1159,9 @@ namespace TekmaticOpcUa
                     // Create status folder
                     _statusFolder = CreateFolder(_tekmaticFolder, "Status", "Status");
 
+                    // Keep only the IsConnected variable
                     _isConnectedVariable = CreateVariable(_statusFolder, "IsConnected", "IsConnected", DataTypeIds.Boolean, ValueRanks.Scalar);
                     _isConnectedVariable.Value = false;
-
-                    _temperatureVariable = CreateVariable(_statusFolder, "Temperature", "Temperature", DataTypeIds.Double, ValueRanks.Scalar);
-                    _temperatureVariable.Value = 0.0;
-
-                    _targetTemperatureVariable = CreateVariable(_statusFolder, "TargetTemperature", "Target Temperature", DataTypeIds.Double, ValueRanks.Scalar);
-                    _targetTemperatureVariable.Value = 0.0;
-
-                    _shakingRpmVariable = CreateVariable(_statusFolder, "ShakingRpm", "Shaking RPM", DataTypeIds.Int32, ValueRanks.Scalar);
-                    _shakingRpmVariable.Value = 0;
-
-                    _targetShakingRpmVariable = CreateVariable(_statusFolder, "TargetShakingRpm", "Target Shaking RPM", DataTypeIds.Int32, ValueRanks.Scalar);
-                    _targetShakingRpmVariable.Value = 0;
-
-                    _isShakingVariable = CreateVariable(_statusFolder, "IsShaking", "Is Shaking", DataTypeIds.Boolean, ValueRanks.Scalar);
-                    _isShakingVariable.Value = false;
-
-                    _isClampClosedVariable = CreateVariable(_statusFolder, "IsClampClosed", "Is Clamp Closed", DataTypeIds.Boolean, ValueRanks.Scalar);
-                    _isClampClosedVariable.Value = false;
-
-                    _connectedDeviceSerialVariable = CreateVariable(_statusFolder, "ConnectedDeviceSerial", "Connected Device Serial", DataTypeIds.String, ValueRanks.Scalar);
-                    _connectedDeviceSerialVariable.Value = string.Empty;
-
-                    // Create device info variables
-                    FolderState deviceInfoFolder = CreateFolder(_statusFolder, "DeviceInfo", "DeviceInfo");
-
-                    _serialNumberVariable = CreateVariable(deviceInfoFolder, "SerialNumber", "SerialNumber", DataTypeIds.String, ValueRanks.Scalar);
-                    _serialNumberVariable.Value = string.Empty;
-                    _serialNumberVariable.Description = new LocalizedText("en", "The serial number of the connected device");
-
-                    _deviceNameVariable = CreateVariable(deviceInfoFolder, "DeviceName", "DeviceName", DataTypeIds.String, ValueRanks.Scalar);
-                    _deviceNameVariable.Value = string.Empty;
-                    _deviceNameVariable.Description = new LocalizedText("en", "The name of the connected device");
-
-                    _deviceTypeVariable = CreateVariable(deviceInfoFolder, "DeviceType", "DeviceType", DataTypeIds.String, ValueRanks.Scalar);
-                    _deviceTypeVariable.Value = string.Empty;
-                    _deviceTypeVariable.Description = new LocalizedText("en", "The type of the connected device");
-
-                    // Create discovered devices folder
-                    _discoveredDevicesFolder = CreateFolder(_statusFolder, "DiscoveredDevices", "Discovered Devices");
-
-                    // Add device count variable
-                    _deviceCountVariable = CreateVariable(_discoveredDevicesFolder, "DeviceCount", "Device Count", DataTypeIds.Int32, ValueRanks.Scalar);
-                    _deviceCountVariable.Value = 0;
 
                     // Create a folder for each slot (1-6)
                     FolderState slotsFolder = CreateFolder(_statusFolder, "Slots", "Slots");
@@ -1696,7 +1654,7 @@ namespace TekmaticOpcUa
         }
 
         /// <summary>
-        /// Updates the Tekmatic status variables with backoff strategy
+        /// Updates only the connection status with backoff strategy
         /// </summary>
         private void UpdateTekmaticStatus(object state)
         {
@@ -1740,8 +1698,7 @@ namespace TekmaticOpcUa
                         _wasConnected = true;
                     }
 
-                    // Only proceed with other updates if the device is connected
-                    UpdateDeviceStatus();
+                    // No longer updating device status - only checking connection
                 }
                 else
                 {
