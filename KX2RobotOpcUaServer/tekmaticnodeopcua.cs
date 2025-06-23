@@ -179,6 +179,41 @@ namespace TekmaticOpcUa
         }
 
         /// <summary>
+        /// Sends a command to the device silently (without logging) and returns the response
+        /// Used primarily for background refresh operations
+        /// </summary>
+        private string SendCommandSilent(string command)
+        {
+            try
+            {
+                // Check if controller is initialized before trying to send a command
+                if (_inhecoController == null)
+                {
+                    return string.Empty;
+                }
+
+                // Send the command (no logging)
+                _inhecoController.WriteOnly(command);
+
+                // Wait for the device to process the command
+                Thread.Sleep(100);
+
+                // Read the response (no logging)
+                string response = _inhecoController.ReadSync();
+
+                // Wait before allowing another command to be sent
+                Thread.Sleep(100);
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                // Silent exception handling
+                return string.Empty;
+            }
+        }
+
+        /// <summary>
         /// Initializes the Tekmatic control
         /// </summary>
         /// <returns>True if initialization was successful, false otherwise</returns>
@@ -405,7 +440,7 @@ namespace TekmaticOpcUa
                     return 0.0;
 
                 // Get the current temperature
-                string response = SendCommand($"{slotId}RAT");
+                string response = SendCommandSilent($"{slotId}RAT");
                 if (!string.IsNullOrEmpty(response) && response.Length > 5)
                 {
                     double temp;
@@ -457,7 +492,7 @@ namespace TekmaticOpcUa
                     return 0.0;
 
                 // Get the target temperature
-                string response = SendCommand($"{slotId}RTT");
+                string response = SendCommandSilent($"{slotId}RTT");
                 if (!string.IsNullOrEmpty(response) && response.Length > 5)
                 {
                     double temp;
@@ -601,7 +636,7 @@ namespace TekmaticOpcUa
                     return 0;
 
                 // Get the current RPM
-                string response = SendCommand($"{slotId}RSR");
+                string response = SendCommandSilent($"{slotId}RSR");
                 if (!string.IsNullOrEmpty(response) && response.Length > 5)
                 {
                     int rpm;
@@ -742,7 +777,7 @@ namespace TekmaticOpcUa
             try
             {
                 // Get the clamp status
-                string response = SendCommand("0RCS");
+                string response = SendCommandSilent("0RCS");
                 if (!string.IsNullOrEmpty(response) && response.Length > 5)
                 {
                     int status;
@@ -817,7 +852,7 @@ namespace TekmaticOpcUa
                     return false;
 
                 // Try to get firmware version to check communication
-                string response = SendCommand("0RFV0");
+                string response = SendCommandSilent("0RFV0");
                 return !string.IsNullOrEmpty(response);
             }
             catch (Exception ex)
