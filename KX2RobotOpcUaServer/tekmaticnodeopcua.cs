@@ -155,14 +155,14 @@ namespace TekmaticOpcUa
                 _inhecoController.WriteOnly(command);
 
                 // Wait for the device to process the command
-                Thread.Sleep(100);
+                Thread.Sleep(1000);
 
                 // Read the response
                 string response = _inhecoController.ReadSync();
                 Console.WriteLine($"Received response: {response}");
 
                 // Wait before allowing another command to be sent
-                Thread.Sleep(100);
+                Thread.Sleep(1000);
 
                 return response;
             }
@@ -196,13 +196,13 @@ namespace TekmaticOpcUa
                 _inhecoController.WriteOnly(command);
 
                 // Wait for the device to process the command
-                Thread.Sleep(100);
+                Thread.Sleep(1000);
 
                 // Read the response (no logging)
                 string response = _inhecoController.ReadSync();
 
                 // Wait before allowing another command to be sent
-                Thread.Sleep(100);
+                Thread.Sleep(1000);
 
                 return response;
             }
