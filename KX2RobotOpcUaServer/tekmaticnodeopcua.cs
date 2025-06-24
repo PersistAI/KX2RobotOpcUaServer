@@ -285,7 +285,7 @@ namespace TekmaticOpcUa
                 _discoveredDevices.Clear();
 
                 // Get firmware version to check communication
-                string response = SendCommand("0RFV0");
+                string response = SendCommand("0RFV1");
                 if (string.IsNullOrEmpty(response))
                 {
                     Console.WriteLine("Failed to communicate with the device");
@@ -852,7 +852,7 @@ namespace TekmaticOpcUa
                     return false;
 
                 // Try to get firmware version to check communication
-                string response = SendCommandSilent("0RFV0");
+                string response = SendCommandSilent("0RFV1");
                 return !string.IsNullOrEmpty(response);
             }
             catch (Exception ex)
