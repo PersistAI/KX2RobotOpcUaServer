@@ -663,88 +663,84 @@ namespace TekmaticOpcUa
         }
 
         /// <summary>
-        /// Set the target shaking RPM for the specified slot
+        /// Controls shaking for the specified slot by setting the RPM and enabling/disabling shaking
         /// </summary>
-        /// <param name="slotId">The slot ID (1-6) to set the shaking RPM for</param>
+        /// <param name="slotId">The slot ID (1-6) to control</param>
         /// <param name="rpm">The target shaking RPM</param>
-        /// <returns>0 for success, -1 for failure</returns>
-        public int SetShakingRpm(int slotId, int rpm)
-        {
-            if (slotId < 1 || slotId > 6)
-                return -1;
-
-            return SetShakingRpmForSlot(slotId, rpm);
-        }
-
-        /// <summary>
-        /// Set the target shaking RPM for a specific slot
-        /// </summary>
-        public int SetShakingRpmForSlot(int slotId, int rpm)
-        {
-            try
-            {
-                if (slotId < 1 || slotId > 6)
-                    return -1;
-
-                Console.WriteLine($"Setting shaking RPM for slot {slotId} to {rpm}...");
-
-                // Set the target RPM
-                string response = SendCommand($"{slotId}SSR{rpm}");
-                if (string.IsNullOrEmpty(response) || !response.StartsWith($"{slotId}ssr"))
-                {
-                    Console.WriteLine($"Failed to set shaking RPM for slot {slotId}: {response}");
-                    return -1;
-                }
-
-                // Update the cached target RPM for this slot
-                _targetShakingRpm[slotId] = rpm;
-
-                // If shaking is enabled, update the current RPM
-                if (_isShaking.ContainsKey(slotId) && _isShaking[slotId])
-                {
-                    _shakingRpm[slotId] = rpm;
-                }
-
-                return 0; // Success
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error setting shaking RPM for slot {slotId}: {ex.Message}");
-                return -1; // Error
-            }
-        }
-
-        /// <summary>
-        /// Enable or disable shaking for the specified slot
-        /// </summary>
-        /// <param name="slotId">The slot ID (1-6) to enable/disable shaking for</param>
         /// <param name="enable">True to enable shaking, false to disable</param>
         /// <returns>0 for success, -1 for failure</returns>
-        public int EnableShaking(int slotId, bool enable)
-        {
-            if (slotId < 1 || slotId > 6)
-                return -1;
-
-            return EnableShakingForSlot(slotId, enable);
-        }
-
-        /// <summary>
-        /// Enable or disable shaking for a specific slot
-        /// </summary>
-        public int EnableShakingForSlot(int slotId, bool enable)
+        public int ControlShaking(int slotId, int rpm, bool enable)
         {
             try
             {
                 if (slotId < 1 || slotId > 6)
                     return -1;
 
-                Console.WriteLine($"{(enable ? "Enabling" : "Disabling")} shaking for slot {slotId}...");
+                Console.WriteLine($"Controlling shaking for slot {slotId}: {rpm} RPM, {(enable ? "enabled" : "disabled")}");
 
-                // Enable or disable shaking
-                string response = SendCommand($"{slotId}ASE{(enable ? "1" : "0")}");
-                if (string.IsNullOrEmpty(response) || !response.StartsWith($"{slotId}ase"))
+                // First set the target RPM (only if we're enabling or if it's an RPM update)
+                if (enable || _targetShakingRpm[slotId] != rpm)
                 {
-                    Console.WriteLine($"Failed to {(enable ? "enable" : "disable")} shaking for slot {slotId}: {response}");
+                    string rpmCommand = $"{slotId}SSR{rpm}";
+
+                    // Check if controller is initialized
+                    if (_inhecoController == null)
+                    {
+                        Console.WriteLine($"Cannot send command '{rpmCommand}': Controller not initialized");
+                        return -1;
+                    }
+
+                    // Send the RPM command
+                    Console.WriteLine($"Sending command: {rpmCommand}");
+                    _inhecoController.WriteOnly(rpmCommand);
+
+                    // Wait for the device to process the command
+                    Thread.Sleep(1000);
+
+                    // Read the response
+                    string rpmResponse = _inhecoController.ReadSync();
+                    Console.WriteLine($"Received response: {rpmResponse}");
+
+                    // Wait before allowing another command to be sent
+                    Thread.Sleep(1000);
+
+                    if (string.IsNullOrEmpty(rpmResponse) || !rpmResponse.StartsWith($"{slotId}ssr"))
+                    {
+                        Console.WriteLine($"Failed to set shaking RPM for slot {slotId}: {rpmResponse}");
+                        return -1;
+                    }
+
+                    // Update the cached target RPM for this slot
+                    _targetShakingRpm[slotId] = rpm;
+                }
+
+                // Then enable/disable shaking
+                string enableCommand = $"{slotId}ASE{(enable ? "1" : "0")}";
+
+                // Check if controller is initialized (again, in case it became null between commands)
+                if (_inhecoController == null)
+                {
+                    Console.WriteLine($"Cannot send command '{enableCommand}': Controller not initialized");
+                    return -1;
+                }
+
+                // Send the enable/disable command
+                Console.WriteLine($"Sending command: {enableCommand}");
+                _inhecoController.WriteOnly(enableCommand);
+
+                // Wait for the device to process the command
+                Thread.Sleep(1000);
+
+                // Read the response
+                string enableResponse = _inhecoController.ReadSync();
+                Console.WriteLine($"Received response: {enableResponse}");
+
+                // Wait before allowing another command to be sent
+                Thread.Sleep(1000);
+
+                if (string.IsNullOrEmpty(enableResponse) || !enableResponse.StartsWith($"{slotId}ase"))
+                {
+                    Console.WriteLine($"Failed to {(enable ? "enable" : "disable")} shaking for slot {slotId}: {enableResponse}");
                     return -1;
                 }
 
@@ -754,7 +750,7 @@ namespace TekmaticOpcUa
                 // Update the current RPM based on the shaking state
                 if (enable)
                 {
-                    _shakingRpm[slotId] = _targetShakingRpm[slotId];
+                    _shakingRpm[slotId] = rpm;
                 }
                 else
                 {
@@ -765,10 +761,11 @@ namespace TekmaticOpcUa
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error {(enable ? "enabling" : "disabling")} shaking for slot {slotId}: {ex.Message}");
+                Console.WriteLine($"Error controlling shaking for slot {slotId}: {ex.Message}");
                 return -1; // Error
             }
         }
+
 
         /// <summary>
         /// Get the clamp status
@@ -1308,18 +1305,18 @@ namespace TekmaticOpcUa
 
                     controlTemperatureMethod.OutputArguments.Value = new Argument[] { controlTemperatureResultArgument };
 
-                    // Create SetShakingRpm method
-                    MethodState setRpmMethod = CreateMethod(_commandsFolder, "SetShakingRpm", "Set Shaking RPM");
+                    // Create ControlShaking method
+                    MethodState controlShakingMethod = CreateMethod(_commandsFolder, "ControlShaking", "Control Shaking");
 
-                    // Define input arguments for SetShakingRpm
-                    setRpmMethod.InputArguments = new PropertyState<Argument[]>(setRpmMethod);
-                    setRpmMethod.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    setRpmMethod.InputArguments.BrowseName = BrowseNames.InputArguments;
-                    setRpmMethod.InputArguments.DisplayName = setRpmMethod.InputArguments.BrowseName.Name;
-                    setRpmMethod.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    setRpmMethod.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    setRpmMethod.InputArguments.DataType = DataTypeIds.Argument;
-                    setRpmMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
+                    // Define input arguments for ControlShaking
+                    controlShakingMethod.InputArguments = new PropertyState<Argument[]>(controlShakingMethod);
+                    controlShakingMethod.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                    controlShakingMethod.InputArguments.BrowseName = BrowseNames.InputArguments;
+                    controlShakingMethod.InputArguments.DisplayName = controlShakingMethod.InputArguments.BrowseName.Name;
+                    controlShakingMethod.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                    controlShakingMethod.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                    controlShakingMethod.InputArguments.DataType = DataTypeIds.Argument;
+                    controlShakingMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
 
                     Argument slotArgument3 = new Argument();
                     slotArgument3.Name = "SlotId";
@@ -1333,70 +1330,31 @@ namespace TekmaticOpcUa
                     rpmArgument.DataType = DataTypeIds.Int32;
                     rpmArgument.ValueRank = ValueRanks.Scalar;
 
-                    setRpmMethod.InputArguments.Value = new Argument[] { slotArgument3, rpmArgument };
-
-                    // Define output arguments for SetShakingRpm (result code)
-                    setRpmMethod.OutputArguments = new PropertyState<Argument[]>(setRpmMethod);
-                    setRpmMethod.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    setRpmMethod.OutputArguments.BrowseName = BrowseNames.OutputArguments;
-                    setRpmMethod.OutputArguments.DisplayName = setRpmMethod.OutputArguments.BrowseName.Name;
-                    setRpmMethod.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    setRpmMethod.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    setRpmMethod.OutputArguments.DataType = DataTypeIds.Argument;
-                    setRpmMethod.OutputArguments.ValueRank = ValueRanks.OneDimension;
-
-                    Argument setRpmResultArgument = new Argument();
-                    setRpmResultArgument.Name = "Result";
-                    setRpmResultArgument.Description = new LocalizedText("Result code: 0=success, -1=failure");
-                    setRpmResultArgument.DataType = DataTypeIds.Int32;
-                    setRpmResultArgument.ValueRank = ValueRanks.Scalar;
-
-                    setRpmMethod.OutputArguments.Value = new Argument[] { setRpmResultArgument };
-
-                    // Create EnableShaking method
-                    MethodState enableShakingMethod = CreateMethod(_commandsFolder, "EnableShaking", "Enable Shaking");
-
-                    // Define input arguments for EnableShaking
-                    enableShakingMethod.InputArguments = new PropertyState<Argument[]>(enableShakingMethod);
-                    enableShakingMethod.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    enableShakingMethod.InputArguments.BrowseName = BrowseNames.InputArguments;
-                    enableShakingMethod.InputArguments.DisplayName = enableShakingMethod.InputArguments.BrowseName.Name;
-                    enableShakingMethod.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    enableShakingMethod.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    enableShakingMethod.InputArguments.DataType = DataTypeIds.Argument;
-                    enableShakingMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
-
-                    Argument slotArgument4 = new Argument();
-                    slotArgument4.Name = "SlotId";
-                    slotArgument4.Description = new LocalizedText("Slot ID (1-6)");
-                    slotArgument4.DataType = DataTypeIds.Int32;
-                    slotArgument4.ValueRank = ValueRanks.Scalar;
-
                     Argument enableArgument = new Argument();
                     enableArgument.Name = "Enable";
                     enableArgument.Description = new LocalizedText("True to enable shaking, false to disable");
                     enableArgument.DataType = DataTypeIds.Boolean;
                     enableArgument.ValueRank = ValueRanks.Scalar;
 
-                    enableShakingMethod.InputArguments.Value = new Argument[] { slotArgument4, enableArgument };
+                    controlShakingMethod.InputArguments.Value = new Argument[] { slotArgument3, rpmArgument, enableArgument };
 
-                    // Define output arguments for EnableShaking (result code)
-                    enableShakingMethod.OutputArguments = new PropertyState<Argument[]>(enableShakingMethod);
-                    enableShakingMethod.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    enableShakingMethod.OutputArguments.BrowseName = BrowseNames.OutputArguments;
-                    enableShakingMethod.OutputArguments.DisplayName = enableShakingMethod.OutputArguments.BrowseName.Name;
-                    enableShakingMethod.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    enableShakingMethod.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    enableShakingMethod.OutputArguments.DataType = DataTypeIds.Argument;
-                    enableShakingMethod.OutputArguments.ValueRank = ValueRanks.OneDimension;
+                    // Define output arguments for ControlShaking (result code)
+                    controlShakingMethod.OutputArguments = new PropertyState<Argument[]>(controlShakingMethod);
+                    controlShakingMethod.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                    controlShakingMethod.OutputArguments.BrowseName = BrowseNames.OutputArguments;
+                    controlShakingMethod.OutputArguments.DisplayName = controlShakingMethod.OutputArguments.BrowseName.Name;
+                    controlShakingMethod.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                    controlShakingMethod.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                    controlShakingMethod.OutputArguments.DataType = DataTypeIds.Argument;
+                    controlShakingMethod.OutputArguments.ValueRank = ValueRanks.OneDimension;
 
-                    Argument enableShakingResultArgument = new Argument();
-                    enableShakingResultArgument.Name = "Result";
-                    enableShakingResultArgument.Description = new LocalizedText("Result code: 0=success, -1=failure");
-                    enableShakingResultArgument.DataType = DataTypeIds.Int32;
-                    enableShakingResultArgument.ValueRank = ValueRanks.Scalar;
+                    Argument controlShakingResultArgument = new Argument();
+                    controlShakingResultArgument.Name = "Result";
+                    controlShakingResultArgument.Description = new LocalizedText("Result code: 0=success, -1=failure");
+                    controlShakingResultArgument.DataType = DataTypeIds.Int32;
+                    controlShakingResultArgument.ValueRank = ValueRanks.Scalar;
 
-                    enableShakingMethod.OutputArguments.Value = new Argument[] { enableShakingResultArgument };
+                    controlShakingMethod.OutputArguments.Value = new Argument[] { controlShakingResultArgument };
 
                     // Create SetClampState method
                     MethodState setClampStateMethod = CreateMethod(_commandsFolder, "SetClampState", "Set Clamp State");
@@ -1817,27 +1775,17 @@ namespace TekmaticOpcUa
                         }
                         return ServiceResult.Create(StatusCodes.BadInvalidArgument, "Invalid arguments");
 
-                    case "SetShakingRpm":
-                        if (inputArguments.Count > 1)
+                    case "ControlShaking":
+                        if (inputArguments.Count > 2)
                         {
                             int slotId = Convert.ToInt32(inputArguments[0]);
                             int rpm = Convert.ToInt32(inputArguments[1]);
-                            int result = _tekmatic.SetShakingRpm(slotId, rpm);
+                            bool enable = Convert.ToBoolean(inputArguments[2]);
+                            int result = _tekmatic.ControlShaking(slotId, rpm, enable);
                             outputArguments[0] = result;
                             return ServiceResult.Good;
                         }
-                        return ServiceResult.Create(StatusCodes.BadInvalidArgument, "Invalid slot ID or RPM");
-
-                    case "EnableShaking":
-                        if (inputArguments.Count > 1)
-                        {
-                            int slotId = Convert.ToInt32(inputArguments[0]);
-                            bool enable = Convert.ToBoolean(inputArguments[1]);
-                            int result = _tekmatic.EnableShaking(slotId, enable);
-                            outputArguments[0] = result;
-                            return ServiceResult.Good;
-                        }
-                        return ServiceResult.Create(StatusCodes.BadInvalidArgument, "Invalid slot ID or enable value");
+                        return ServiceResult.Create(StatusCodes.BadInvalidArgument, "Invalid arguments");
 
                     case "SetClampState":
                         if (inputArguments.Count > 0)
