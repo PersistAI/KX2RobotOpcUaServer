@@ -521,85 +521,86 @@ namespace TekmaticOpcUa
         }
 
         /// <summary>
-        /// Set the target temperature for the specified slot
+        /// Controls the temperature for the specified slot by setting the target temperature and enabling/disabling temperature control
         /// </summary>
-        /// <param name="slotId">The slot ID (1-6) to set the target temperature for</param>
+        /// <param name="slotId">The slot ID (1-6) to control</param>
         /// <param name="temperature">The target temperature in degrees Celsius</param>
-        /// <returns>0 for success, -1 for failure</returns>
-        public int SetTargetTemperature(int slotId, double temperature)
-        {
-            if (slotId < 1 || slotId > 6)
-                return -1;
-
-            return SetTargetTemperatureForSlot(slotId, temperature);
-        }
-
-        /// <summary>
-        /// Set the target temperature for a specific slot
-        /// </summary>
-        public int SetTargetTemperatureForSlot(int slotId, double temperature)
-        {
-            try
-            {
-                if (slotId < 1 || slotId > 6)
-                    return -1;
-
-                Console.WriteLine($"Setting target temperature for slot {slotId} to {temperature}°C...");
-
-                // Convert to 1/10 °C for the command
-                int tempValue = (int)(temperature * 10);
-
-                // Set the target temperature
-                string response = SendCommand($"{slotId}STT{tempValue}");
-                if (string.IsNullOrEmpty(response) || !response.StartsWith($"{slotId}stt"))
-                {
-                    Console.WriteLine($"Failed to set target temperature for slot {slotId}: {response}");
-                    return -1;
-                }
-
-                // Update the cached target temperature for this slot
-                _targetTemperature[slotId] = temperature;
-
-                return 0; // Success
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error setting target temperature for slot {slotId}: {ex.Message}");
-                return -1; // Error
-            }
-        }
-
-        /// <summary>
-        /// Enable or disable temperature control for the specified slot
-        /// </summary>
-        /// <param name="slotId">The slot ID (1-6) to enable/disable temperature control for</param>
         /// <param name="enable">True to enable temperature control, false to disable</param>
         /// <returns>0 for success, -1 for failure</returns>
-        public int EnableTemperature(int slotId, bool enable)
-        {
-            if (slotId < 1 || slotId > 6)
-                return -1;
-
-            return EnableTemperatureForSlot(slotId, enable);
-        }
-
-        /// <summary>
-        /// Enable or disable temperature control for a specific slot
-        /// </summary>
-        public int EnableTemperatureForSlot(int slotId, bool enable)
+        public int ControlTemperature(int slotId, double temperature, bool enable)
         {
             try
             {
                 if (slotId < 1 || slotId > 6)
                     return -1;
 
-                Console.WriteLine($"{(enable ? "Enabling" : "Disabling")} temperature control for slot {slotId}...");
+                Console.WriteLine($"Controlling temperature for slot {slotId}: {temperature}°C, {(enable ? "enabled" : "disabled")}");
 
-                // Enable or disable temperature control
-                string response = SendCommand($"{slotId}ATE{(enable ? "1" : "0")}");
-                if (string.IsNullOrEmpty(response) || !response.StartsWith($"{slotId}ate"))
+                // First set the target temperature (only if we're enabling or if it's a temperature update)
+                if (enable || _targetTemperature[slotId] != temperature)
                 {
-                    Console.WriteLine($"Failed to {(enable ? "enable" : "disable")} temperature control for slot {slotId}: {response}");
+                    // Convert to 1/10 °C for the command
+                    int tempValue = (int)(temperature * 10);
+                    string tempCommand = $"{slotId}STT{tempValue}";
+
+                    // Check if controller is initialized
+                    if (_inhecoController == null)
+                    {
+                        Console.WriteLine($"Cannot send command '{tempCommand}': Controller not initialized");
+                        return -1;
+                    }
+
+                    // Send the temperature command
+                    Console.WriteLine($"Sending command: {tempCommand}");
+                    _inhecoController.WriteOnly(tempCommand);
+
+                    // Wait for the device to process the command
+                    Thread.Sleep(1000);
+
+                    // Read the response
+                    string tempResponse = _inhecoController.ReadSync();
+                    Console.WriteLine($"Received response: {tempResponse}");
+
+                    // Wait before allowing another command to be sent
+                    Thread.Sleep(1000);
+
+                    if (string.IsNullOrEmpty(tempResponse) || !tempResponse.StartsWith($"{slotId}stt"))
+                    {
+                        Console.WriteLine($"Failed to set target temperature for slot {slotId}: {tempResponse}");
+                        return -1;
+                    }
+
+                    // Update the cached target temperature for this slot
+                    _targetTemperature[slotId] = temperature;
+                }
+
+                // Then enable/disable temperature control
+                string enableCommand = $"{slotId}ATE{(enable ? "1" : "0")}";
+
+                // Check if controller is initialized (again, in case it became null between commands)
+                if (_inhecoController == null)
+                {
+                    Console.WriteLine($"Cannot send command '{enableCommand}': Controller not initialized");
+                    return -1;
+                }
+
+                // Send the enable/disable command
+                Console.WriteLine($"Sending command: {enableCommand}");
+                _inhecoController.WriteOnly(enableCommand);
+
+                // Wait for the device to process the command
+                Thread.Sleep(1000);
+
+                // Read the response
+                string enableResponse = _inhecoController.ReadSync();
+                Console.WriteLine($"Received response: {enableResponse}");
+
+                // Wait before allowing another command to be sent
+                Thread.Sleep(1000);
+
+                if (string.IsNullOrEmpty(enableResponse) || !enableResponse.StartsWith($"{slotId}ate"))
+                {
+                    Console.WriteLine($"Failed to {(enable ? "enable" : "disable")} temperature control for slot {slotId}: {enableResponse}");
                     return -1;
                 }
 
@@ -607,7 +608,7 @@ namespace TekmaticOpcUa
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error {(enable ? "enabling" : "disabling")} temperature control for slot {slotId}: {ex.Message}");
+                Console.WriteLine($"Error controlling temperature for slot {slotId}: {ex.Message}");
                 return -1; // Error
             }
         }
@@ -1255,95 +1256,57 @@ namespace TekmaticOpcUa
                     discoverDevicesMethod.OutputArguments.Value = new Argument[] { deviceCountArgument };
 
 
-                    // Create SetTargetTemperature method
-                    MethodState setTemperatureMethod = CreateMethod(_commandsFolder, "SetTargetTemperature", "Set Target Temperature");
 
-                    // Define input arguments for SetTargetTemperature
-                    setTemperatureMethod.InputArguments = new PropertyState<Argument[]>(setTemperatureMethod);
-                    setTemperatureMethod.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    setTemperatureMethod.InputArguments.BrowseName = BrowseNames.InputArguments;
-                    setTemperatureMethod.InputArguments.DisplayName = setTemperatureMethod.InputArguments.BrowseName.Name;
-                    setTemperatureMethod.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    setTemperatureMethod.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    setTemperatureMethod.InputArguments.DataType = DataTypeIds.Argument;
-                    setTemperatureMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
+                    // Create ControlTemperature method
+                    MethodState controlTemperatureMethod = CreateMethod(_commandsFolder, "ControlTemperature", "Control Temperature");
 
-                    Argument slotArgument = new Argument();
-                    slotArgument.Name = "SlotId";
-                    slotArgument.Description = new LocalizedText("Slot ID (1-6)");
-                    slotArgument.DataType = DataTypeIds.Int32;
-                    slotArgument.ValueRank = ValueRanks.Scalar;
+                    // Define input arguments for ControlTemperature
+                    controlTemperatureMethod.InputArguments = new PropertyState<Argument[]>(controlTemperatureMethod);
+                    controlTemperatureMethod.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                    controlTemperatureMethod.InputArguments.BrowseName = BrowseNames.InputArguments;
+                    controlTemperatureMethod.InputArguments.DisplayName = controlTemperatureMethod.InputArguments.BrowseName.Name;
+                    controlTemperatureMethod.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                    controlTemperatureMethod.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                    controlTemperatureMethod.InputArguments.DataType = DataTypeIds.Argument;
+                    controlTemperatureMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
 
-                    Argument temperatureArgument = new Argument();
-                    temperatureArgument.Name = "Temperature";
-                    temperatureArgument.Description = new LocalizedText("Target temperature in degrees Celsius");
-                    temperatureArgument.DataType = DataTypeIds.Double;
-                    temperatureArgument.ValueRank = ValueRanks.Scalar;
+                    Argument slotArgument5 = new Argument();
+                    slotArgument5.Name = "SlotId";
+                    slotArgument5.Description = new LocalizedText("Slot ID (1-6)");
+                    slotArgument5.DataType = DataTypeIds.Int32;
+                    slotArgument5.ValueRank = ValueRanks.Scalar;
 
-                    setTemperatureMethod.InputArguments.Value = new Argument[] { slotArgument, temperatureArgument };
+                    Argument temperatureArgument2 = new Argument();
+                    temperatureArgument2.Name = "Temperature";
+                    temperatureArgument2.Description = new LocalizedText("Target temperature in degrees Celsius");
+                    temperatureArgument2.DataType = DataTypeIds.Double;
+                    temperatureArgument2.ValueRank = ValueRanks.Scalar;
 
-                    // Define output arguments for SetTargetTemperature (result code)
-                    setTemperatureMethod.OutputArguments = new PropertyState<Argument[]>(setTemperatureMethod);
-                    setTemperatureMethod.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    setTemperatureMethod.OutputArguments.BrowseName = BrowseNames.OutputArguments;
-                    setTemperatureMethod.OutputArguments.DisplayName = setTemperatureMethod.OutputArguments.BrowseName.Name;
-                    setTemperatureMethod.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    setTemperatureMethod.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    setTemperatureMethod.OutputArguments.DataType = DataTypeIds.Argument;
-                    setTemperatureMethod.OutputArguments.ValueRank = ValueRanks.OneDimension;
+                    Argument enableArgument2 = new Argument();
+                    enableArgument2.Name = "Enable";
+                    enableArgument2.Description = new LocalizedText("True to enable temperature control, false to disable");
+                    enableArgument2.DataType = DataTypeIds.Boolean;
+                    enableArgument2.ValueRank = ValueRanks.Scalar;
 
-                    Argument setTemperatureResultArgument = new Argument();
-                    setTemperatureResultArgument.Name = "Result";
-                    setTemperatureResultArgument.Description = new LocalizedText("Result code: 0=success, -1=failure");
-                    setTemperatureResultArgument.DataType = DataTypeIds.Int32;
-                    setTemperatureResultArgument.ValueRank = ValueRanks.Scalar;
+                    controlTemperatureMethod.InputArguments.Value = new Argument[] { slotArgument5, temperatureArgument2, enableArgument2 };
 
-                    setTemperatureMethod.OutputArguments.Value = new Argument[] { setTemperatureResultArgument };
+                    // Define output arguments for ControlTemperature (result code)
+                    controlTemperatureMethod.OutputArguments = new PropertyState<Argument[]>(controlTemperatureMethod);
+                    controlTemperatureMethod.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
+                    controlTemperatureMethod.OutputArguments.BrowseName = BrowseNames.OutputArguments;
+                    controlTemperatureMethod.OutputArguments.DisplayName = controlTemperatureMethod.OutputArguments.BrowseName.Name;
+                    controlTemperatureMethod.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
+                    controlTemperatureMethod.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
+                    controlTemperatureMethod.OutputArguments.DataType = DataTypeIds.Argument;
+                    controlTemperatureMethod.OutputArguments.ValueRank = ValueRanks.OneDimension;
 
-                    // Create EnableTemperature method
-                    MethodState enableTemperatureMethod = CreateMethod(_commandsFolder, "EnableTemperature", "Enable Temperature Control");
+                    Argument controlTemperatureResultArgument = new Argument();
+                    controlTemperatureResultArgument.Name = "Result";
+                    controlTemperatureResultArgument.Description = new LocalizedText("Result code: 0=success, -1=failure");
+                    controlTemperatureResultArgument.DataType = DataTypeIds.Int32;
+                    controlTemperatureResultArgument.ValueRank = ValueRanks.Scalar;
 
-                    // Define input arguments for EnableTemperature
-                    enableTemperatureMethod.InputArguments = new PropertyState<Argument[]>(enableTemperatureMethod);
-                    enableTemperatureMethod.InputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    enableTemperatureMethod.InputArguments.BrowseName = BrowseNames.InputArguments;
-                    enableTemperatureMethod.InputArguments.DisplayName = enableTemperatureMethod.InputArguments.BrowseName.Name;
-                    enableTemperatureMethod.InputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    enableTemperatureMethod.InputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    enableTemperatureMethod.InputArguments.DataType = DataTypeIds.Argument;
-                    enableTemperatureMethod.InputArguments.ValueRank = ValueRanks.OneDimension;
-
-                    Argument slotArgument2 = new Argument();
-                    slotArgument2.Name = "SlotId";
-                    slotArgument2.Description = new LocalizedText("Slot ID (1-6)");
-                    slotArgument2.DataType = DataTypeIds.Int32;
-                    slotArgument2.ValueRank = ValueRanks.Scalar;
-
-                    Argument enableTempArgument = new Argument();
-                    enableTempArgument.Name = "Enable";
-                    enableTempArgument.Description = new LocalizedText("True to enable temperature control, false to disable");
-                    enableTempArgument.DataType = DataTypeIds.Boolean;
-                    enableTempArgument.ValueRank = ValueRanks.Scalar;
-
-                    enableTemperatureMethod.InputArguments.Value = new Argument[] { slotArgument2, enableTempArgument };
-
-                    // Define output arguments for EnableTemperature (result code)
-                    enableTemperatureMethod.OutputArguments = new PropertyState<Argument[]>(enableTemperatureMethod);
-                    enableTemperatureMethod.OutputArguments.NodeId = new NodeId(++_lastUsedId, _namespaceIndex);
-                    enableTemperatureMethod.OutputArguments.BrowseName = BrowseNames.OutputArguments;
-                    enableTemperatureMethod.OutputArguments.DisplayName = enableTemperatureMethod.OutputArguments.BrowseName.Name;
-                    enableTemperatureMethod.OutputArguments.TypeDefinitionId = VariableTypeIds.PropertyType;
-                    enableTemperatureMethod.OutputArguments.ReferenceTypeId = ReferenceTypes.HasProperty;
-                    enableTemperatureMethod.OutputArguments.DataType = DataTypeIds.Argument;
-                    enableTemperatureMethod.OutputArguments.ValueRank = ValueRanks.OneDimension;
-
-                    Argument enableTemperatureResultArgument = new Argument();
-                    enableTemperatureResultArgument.Name = "Result";
-                    enableTemperatureResultArgument.Description = new LocalizedText("Result code: 0=success, -1=failure");
-                    enableTemperatureResultArgument.DataType = DataTypeIds.Int32;
-                    enableTemperatureResultArgument.ValueRank = ValueRanks.Scalar;
-
-                    enableTemperatureMethod.OutputArguments.Value = new Argument[] { enableTemperatureResultArgument };
+                    controlTemperatureMethod.OutputArguments.Value = new Argument[] { controlTemperatureResultArgument };
 
                     // Create SetShakingRpm method
                     MethodState setRpmMethod = CreateMethod(_commandsFolder, "SetShakingRpm", "Set Shaking RPM");
@@ -1840,27 +1803,19 @@ namespace TekmaticOpcUa
                         outputArguments[0] = deviceCount;
                         return ServiceResult.Good;
 
-                    case "SetTargetTemperature":
-                        if (inputArguments.Count > 1)
+
+
+                    case "ControlTemperature":
+                        if (inputArguments.Count > 2)
                         {
                             int slotId = Convert.ToInt32(inputArguments[0]);
                             double temperature = Convert.ToDouble(inputArguments[1]);
-                            int result = _tekmatic.SetTargetTemperature(slotId, temperature);
+                            bool enable = Convert.ToBoolean(inputArguments[2]);
+                            int result = _tekmatic.ControlTemperature(slotId, temperature, enable);
                             outputArguments[0] = result;
                             return ServiceResult.Good;
                         }
-                        return ServiceResult.Create(StatusCodes.BadInvalidArgument, "Invalid slot ID or temperature");
-
-                    case "EnableTemperature":
-                        if (inputArguments.Count > 1)
-                        {
-                            int slotId = Convert.ToInt32(inputArguments[0]);
-                            bool enable = Convert.ToBoolean(inputArguments[1]);
-                            int result = _tekmatic.EnableTemperature(slotId, enable);
-                            outputArguments[0] = result;
-                            return ServiceResult.Good;
-                        }
-                        return ServiceResult.Create(StatusCodes.BadInvalidArgument, "Invalid slot ID or enable value");
+                        return ServiceResult.Create(StatusCodes.BadInvalidArgument, "Invalid arguments");
 
                     case "SetShakingRpm":
                         if (inputArguments.Count > 1)
