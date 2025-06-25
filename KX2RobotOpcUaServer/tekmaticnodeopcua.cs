@@ -317,6 +317,14 @@ namespace TekmaticOpcUa
                 case 0: return "Thermoshake";
                 case 1: return "CPAC";
                 case 2: return "Teleshake";
+                case 3: return "CPLC";
+                case 4: return "CPAC2TEC";
+                case 5: return "Heat PAC";
+                case 6: return "Cycler";
+                case 7: return "Heated Lid";
+                case 8: return "ACAC";
+                case 9: return "LCAC";
+                case 10: return "CPHF";
                 case 12: return "Thermoshake AC";
                 case 13: return "Teleshake AC";
                 case 14: return "Teleshake95 AC";
@@ -370,6 +378,48 @@ namespace TekmaticOpcUa
                 return null;
 
             return _discoveredDevices.FirstOrDefault(d => d.SlotId == slotId);
+        }
+
+        /// <summary>
+        /// Gets the current temperature for the specified slot
+        /// </summary>
+        /// <param name="slotId">The slot ID (1-6) to get the temperature for</param>
+        /// <returns>Temperature in degrees Celsius, or null if unable to get temperature</returns>
+        public double? GetSlotTemperature(int slotId)
+        {
+            try
+            {
+                if (slotId < 1 || slotId > 6)
+                    return null;
+
+                // Check if controller is initialized
+                if (_inhecoController == null)
+                {
+                    Console.WriteLine($"Cannot get temperature for slot {slotId}: Controller not initialized");
+                    return null;
+                }
+
+                // Send the RAT command to get temperature
+                string response = SendCommandSilent($"{slotId}RAT");
+
+                if (!string.IsNullOrEmpty(response) && response.Length > 4)
+                {
+                    // Parse the temperature value (format: "1rat00196" for 19.6°C)
+                    string tempString = response.Substring(4);
+                    if (int.TryParse(tempString, out int tempValue))
+                    {
+                        // Convert from 1/10 °C to °C
+                        return tempValue / 10.0;
+                    }
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error getting temperature for slot {slotId}: {ex.Message}");
+                return null;
+            }
         }
 
 
@@ -678,6 +728,9 @@ namespace TekmaticOpcUa
         // Dictionary to keep track of slot device variables
         private Dictionary<int, BaseDataVariableState> _slotDeviceVariables = new Dictionary<int, BaseDataVariableState>();
 
+        // Dictionary to keep track of slot temperature variables
+        private Dictionary<int, BaseDataVariableState> _slotTemperatureVariables = new Dictionary<int, BaseDataVariableState>();
+
         // Constructor
         public TekmaticNodeManager(
             IServerInternal server,
@@ -819,6 +872,11 @@ namespace TekmaticOpcUa
                         BaseDataVariableState slotDeviceVar = CreateVariable(_statusFolder, $"Slot{slot}Device", $"Slot {slot} Device", DataTypeIds.String, ValueRanks.Scalar);
                         slotDeviceVar.Value = "No Device";
                         _slotDeviceVariables[slot] = slotDeviceVar;
+
+                        // Create a variable for each slot's temperature
+                        BaseDataVariableState slotTempVar = CreateVariable(_statusFolder, $"Slot{slot}Temperature", $"Slot {slot} Temperature", DataTypeIds.Double, ValueRanks.Scalar);
+                        slotTempVar.Value = 0.0;
+                        _slotTemperatureVariables[slot] = slotTempVar;
                     }
 
 
@@ -1153,7 +1211,7 @@ namespace TekmaticOpcUa
         }
 
         /// <summary>
-        /// Updates the slot device information
+        /// Updates the slot device information and temperatures
         /// </summary>
         private void UpdateSlotFolderDeviceInfo()
         {
@@ -1174,6 +1232,17 @@ namespace TekmaticOpcUa
                     string deviceName = hasDevice ? device.Name : (device != null ? device.Name : "No Device");
                     _slotDeviceVariables[slot].Value = deviceName;
                     _slotDeviceVariables[slot].ClearChangeMasks(SystemContext, false);
+
+                    // Update temperature if device is present
+                    if (hasDevice && _slotTemperatureVariables.ContainsKey(slot))
+                    {
+                        double? temperature = _tekmatic.GetSlotTemperature(slot);
+                        if (temperature.HasValue)
+                        {
+                            _slotTemperatureVariables[slot].Value = temperature.Value;
+                            _slotTemperatureVariables[slot].ClearChangeMasks(SystemContext, false);
+                        }
+                    }
                 }
             }
             catch (Exception ex)
@@ -1228,7 +1297,8 @@ namespace TekmaticOpcUa
                         _wasConnected = true;
                     }
 
-                    // No longer updating device status - only checking connection
+                    // Update device status and temperatures when connected
+                    UpdateSlotFolderDeviceInfo();
                 }
                 else
                 {
