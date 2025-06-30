@@ -330,7 +330,7 @@ namespace LabEquipmentOpcUa
             ApplicationConfiguration config = new ApplicationConfiguration
             {
                 ApplicationName = "Laboratory Equipment OPC UA Server",
-                ApplicationUri = "urn:localhost:LabEquipmentOpcUaServer",
+                ApplicationUri = "urn:LabEquipmentOpcUaServer",
                 ProductUri = "http://persist.com/LabEquipmentOpcUaServer",
                 ApplicationType = ApplicationType.Server,
 
@@ -382,7 +382,7 @@ namespace LabEquipmentOpcUa
                 {
                     BaseAddresses = new StringCollection
                     {
-                        "opc.tcp://localhost:4840/LabEquipmentOpcUaServer"
+                        "opc.tcp://0.0.0.0:4840/LabEquipmentOpcUaServer"
                     },
                     MinRequestThreadCount = 5,
                     MaxRequestThreadCount = 100,
