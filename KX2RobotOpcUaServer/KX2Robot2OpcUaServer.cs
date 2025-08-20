@@ -15,12 +15,12 @@ using KX2RobotControlNamespace;
 using LabEquipmentOpcUa;
 using static KX2RobotControlNamespace.KX2RobotControl;
 
-namespace KX2RobotOpcUa
+namespace KX2Robot2OpcUa
 {
     /// <summary>
-    /// KX2 Robot Node Manager for OPC UA Server    
+    /// KX2 Robot 2 Node Manager for OPC UA Server    
     /// </summary>
-    public class KX2RobotNodeManager : CustomNodeManager2, IEquipmentNodeManager, INodeManagerFactory
+    public class KX2Robot2NodeManager : CustomNodeManager2, IEquipmentNodeManager, INodeManagerFactory
     {
         /// <summary>
         /// The interval in milliseconds for updating robot status.
@@ -51,12 +51,12 @@ namespace KX2RobotOpcUa
         public INodeManager Create(IServerInternal server, ApplicationConfiguration configuration)
         {
             // Create a new instance of the node manager with the server and configuration
-            return new KX2RobotNodeManager(server, configuration, _kx2Robot);
+            return new KX2Robot2NodeManager(server, configuration, _kx2Robot2);
         }
         #endregion
 
         #region Private Fields
-        private KX2RobotControl _kx2Robot;
+        private KX2RobotControl _kx2Robot2;
         private ushort _namespaceIndex;
         private uint _lastUsedId;  // Changed from long to uint for NodeId compatibility
         private Timer _updateTimer;
@@ -87,30 +87,30 @@ namespace KX2RobotOpcUa
 
         #region Constructor
         /// <summary>
-        /// Initializes a new instance of the KX2RobotNodeManager class.
+        /// Initializes a new instance of the KX2Robot2NodeManager class.
         /// </summary>
-        public KX2RobotNodeManager(
+        public KX2Robot2NodeManager(
             IServerInternal server,
             ApplicationConfiguration configuration,
-            KX2RobotControl kx2Robot)
-        : base(server, configuration, new string[] { "http://persist.com/KX2Robot" })
+            KX2RobotControl kx2Robot2)
+        : base(server, configuration, new string[] { "http://persist.com/KX2Robot2" })
         {
             try
             {
-                Console.WriteLine("KX2RobotNodeManager constructor called with IServerInternal");
+                Console.WriteLine("KX2Robot2NodeManager constructor called with IServerInternal");
 
                 // Store the robot control
-                _kx2Robot = kx2Robot;
+                _kx2Robot2 = kx2Robot2;
                 _lastUsedId = 0;
 
                 // Start a timer to update the robot status
                 _updateTimer = new Timer(UpdateRobotStatus, null, UPDATE_INTERVAL_MS, UPDATE_INTERVAL_MS);
 
-                Console.WriteLine("KX2RobotNodeManager constructor completed successfully");
+                Console.WriteLine("KX2Robot2NodeManager constructor completed successfully");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error in KX2RobotNodeManager constructor: {ex.Message}");
+                Console.WriteLine($"Error in KX2Robot2NodeManager constructor: {ex.Message}");
                 if (ex.InnerException != null)
                 {
                     Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
@@ -123,44 +123,44 @@ namespace KX2RobotOpcUa
 
         #region IEquipmentNodeManager Implementation
         /// <summary>
-        /// Initializes the KX2 robot.
+        /// Initializes the KX2 Robot 2.
         /// </summary>
         public void Initialize()
         {
             try
             {
-                // Initialize the robot
-                Console.WriteLine("Initializing KX2 robot...");
-                int result = _kx2Robot.Initialize();
+                // Initialize Robot 2
+                Console.WriteLine("Initializing KX2 Robot 2...");
+                int result = _kx2Robot2.Initialize();
                 if (result == 0)
-                    Console.WriteLine("KX2 robot initialized successfully.");
+                    Console.WriteLine("KX2 Robot 2 initialized successfully.");
                 else
-                    Console.WriteLine($"Failed to initialize KX2 robot: Error {result}");
+                    Console.WriteLine($"Failed to initialize KX2 Robot 2: Error {result}");
 
                 // Note: Teach points and sequence files are loaded by the factory
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error initializing KX2 robot: {ex.Message}");
+                Console.WriteLine($"Error initializing KX2 Robot 2: {ex.Message}");
                 throw;
             }
         }
 
         /// <summary>
-        /// Shuts down the KX2 robot.
+        /// Shuts down the KX2 Robot 2.
         /// </summary>
         public void Shutdown()
         {
             try
             {
-                // Shutdown the robot
-                Console.WriteLine("Shutting down KX2 robot...");
-                _kx2Robot.ShutDown();
-                Console.WriteLine("KX2 robot shut down successfully.");
+                // Shutdown Robot 2
+                Console.WriteLine("Shutting down KX2 Robot 2...");
+                _kx2Robot2.ShutDown();
+                Console.WriteLine("KX2 Robot 2 shut down successfully.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error shutting down KX2 robot: {ex.Message}");
+                Console.WriteLine($"Error shutting down KX2 Robot 2: {ex.Message}");
             }
         }
 
@@ -187,7 +187,7 @@ namespace KX2RobotOpcUa
 
                         // Create a simplified address space for testing
                         Console.WriteLine("Creating root folder...");
-                        _robotFolder = CreateFolder(null, "KX2Robot", "KX2Robot");
+                        _robotFolder = CreateFolder(null, "KX2Robot2", "KX2Robot2");
 
                         // IMPORTANT: Add the root folder directly to the Objects folder
                         Console.WriteLine("Adding root folder to Objects folder...");
@@ -250,7 +250,7 @@ namespace KX2RobotOpcUa
                         _barcodeReaderVersionVariable.Description = new LocalizedText("en", "The firmware version of the barcode reader");
 
                         _barcodeReaderPortVariable = CreateVariable(_statusFolder, "BarcodeReaderPort", "Barcode Reader COM Port", DataTypeIds.Byte, ValueRanks.Scalar);
-                        _barcodeReaderPortVariable.Value = _kx2Robot.GetBarcodeReaderSerialPort();
+                        _barcodeReaderPortVariable.Value = _kx2Robot2.GetBarcodeReaderSerialPort();
                         _barcodeReaderPortVariable.Description = new LocalizedText("en", "The COM port number used for the barcode reader");
 
                         // Create axis position variables
@@ -743,7 +743,7 @@ namespace KX2RobotOpcUa
 
                         method.InputArguments.Value = new Argument[]
                         {
-                        new Argument { Name = "FilePath", Description = "Complete file path for the teach points file", DataType = DataTypeIds.String, ValueRank = ValueRanks.Scalar }
+                        new Argument { Name = "FilePath", Description = "Path to the teach points file", DataType = DataTypeIds.String, ValueRank = ValueRanks.Scalar }
                         };
 
                         method.OutputArguments = new PropertyState<Argument[]>(method);
@@ -757,7 +757,7 @@ namespace KX2RobotOpcUa
 
                         method.OutputArguments.Value = new Argument[]
                         {
-                        new Argument { Name = "Result", Description = "Result code (0 = success)", DataType = DataTypeIds.Int32, ValueRank = ValueRanks.Scalar }
+                        new Argument { Name = "Result", Description = "Result code: 0=success, -1=invalid path, -2=file not found, -3=exception", DataType = DataTypeIds.Int32, ValueRank = ValueRanks.Scalar }
                         };
 
                         method.OnCallMethod = onCalled;
@@ -775,7 +775,7 @@ namespace KX2RobotOpcUa
 
                         method.InputArguments.Value = new Argument[]
                         {
-                        new Argument { Name = "FilePath", Description = "Complete file path for the sequence file", DataType = DataTypeIds.String, ValueRank = ValueRanks.Scalar }
+                        new Argument { Name = "FilePath", Description = "Path to the sequence file", DataType = DataTypeIds.String, ValueRank = ValueRanks.Scalar }
                         };
 
                         method.OutputArguments = new PropertyState<Argument[]>(method);
@@ -789,7 +789,7 @@ namespace KX2RobotOpcUa
 
                         method.OutputArguments.Value = new Argument[]
                         {
-                        new Argument { Name = "Result", Description = "Result code (0 = success)", DataType = DataTypeIds.Int32, ValueRank = ValueRanks.Scalar }
+                        new Argument { Name = "Result", Description = "Result code: 0=success, -1=invalid path, -2=file not found, -3=exception", DataType = DataTypeIds.Int32, ValueRank = ValueRanks.Scalar }
                         };
 
                         method.OnCallMethod = onCalled;
@@ -992,7 +992,7 @@ namespace KX2RobotOpcUa
             {
                 // Get the number of teach points
                 int teachPointCount = 0;
-                short result = _kx2Robot.TeachPointsGetCount(ref teachPointCount);
+                short result = _kx2Robot2.TeachPointsGetCount(ref teachPointCount);
 
                 if (result != 0)
                 {
@@ -1003,7 +1003,7 @@ namespace KX2RobotOpcUa
                 for (short i = 0; i < teachPointCount; i++)
                 {
                     string teachPointName = "";
-                    _kx2Robot.TeachPointGetName(i, ref teachPointName);
+                    _kx2Robot2.TeachPointGetName(i, ref teachPointName);
 
                     if (!string.IsNullOrEmpty(teachPointName))
                     {
@@ -1012,7 +1012,7 @@ namespace KX2RobotOpcUa
 
                         // Get the teach point values
                         double[] positionValues = new double[5];
-                        _kx2Robot.TeachPointGetValue(i, ref positionValues);
+                        _kx2Robot2.TeachPointGetValue(i, ref positionValues);
 
                         // Create variables for each axis
                         CreateVariable(teachPointFolder, "Shoulder", "Shoulder", DataTypeIds.Double, ValueRanks.Scalar).Value = positionValues[1];
@@ -1036,7 +1036,7 @@ namespace KX2RobotOpcUa
             try
             {
                 // Get the sequence file path
-                string sequenceFilePath = _kx2Robot.GetDefaultSequenceFile();
+                string sequenceFilePath = _kx2Robot2.GetDefaultSequenceFile();
                 if (string.IsNullOrEmpty(sequenceFilePath) || !File.Exists(sequenceFilePath))
                 {
                     return;
@@ -1044,7 +1044,7 @@ namespace KX2RobotOpcUa
 
                 // Get sequence names
                 string[] scriptNames = new string[10];
-                _kx2Robot.ScriptsGetNames(sequenceFilePath, ref scriptNames);
+                _kx2Robot2.ScriptsGetNames(sequenceFilePath, ref scriptNames);
 
                 // Create a node for each sequence
                 foreach (string scriptName in scriptNames.Where(s => !string.IsNullOrEmpty(s)))
@@ -1054,7 +1054,7 @@ namespace KX2RobotOpcUa
 
                     // Get the sequence operations
                     string[] operations = new string[100];
-                    _kx2Robot.ScriptGetOperations(sequenceFilePath, scriptName, ref operations);
+                    _kx2Robot2.ScriptGetOperations(sequenceFilePath, scriptName, ref operations);
 
                     // Create a variable for the operations
                     BaseDataVariableState operationsVariable = CreateVariable(sequenceFolder, "Operations", "Operations", DataTypeIds.String, ValueRanks.OneDimension);
@@ -1079,7 +1079,7 @@ namespace KX2RobotOpcUa
                 {
                     try
                     {
-                        _isInitializedVariable.Value = _kx2Robot.IsInitialized();
+                        _isInitializedVariable.Value = _kx2Robot2.IsInitialized();
                     }
                     catch (Exception ex)
                     {
@@ -1104,7 +1104,7 @@ namespace KX2RobotOpcUa
                                 continue;
 
                             bool isDone = true;
-                            short result = _kx2Robot.MotorCheckIfMoveDone(axis, ref isDone);
+                            short result = _kx2Robot2.MotorCheckIfMoveDone(axis, ref isDone);
 
                             if (result == 0 && !isDone)
                             {
@@ -1128,7 +1128,7 @@ namespace KX2RobotOpcUa
                 {
                     try
                     {
-                        _isRobotOnRailVariable.Value = _kx2Robot.IsRobotOnRail();
+                        _isRobotOnRailVariable.Value = _kx2Robot2.IsRobotOnRail();
                     }
                     catch (Exception ex)
                     {
@@ -1143,7 +1143,7 @@ namespace KX2RobotOpcUa
                 {
                     try
                     {
-                        _isScriptRunningVariable.Value = _kx2Robot.IsScriptRunning();
+                        _isScriptRunningVariable.Value = _kx2Robot2.IsScriptRunning();
                     }
                     catch (Exception ex)
                     {
@@ -1159,7 +1159,7 @@ namespace KX2RobotOpcUa
                     try
                     {
                         bool isRequired = false;
-                        short result = _kx2Robot.IsMaintenanceRequired(ref isRequired);
+                        short result = _kx2Robot2.IsMaintenanceRequired(ref isRequired);
                         if (result == 0)
                         {
                             _isZMaintenanceRequiredVariable.Value = isRequired;
@@ -1178,7 +1178,7 @@ namespace KX2RobotOpcUa
                     try
                     {
                         bool isRequired = false;
-                        short result = _kx2Robot.IsRailMaintenanceRequired(ref isRequired);
+                        short result = _kx2Robot2.IsRailMaintenanceRequired(ref isRequired);
                         if (result == 0)
                         {
                             _isRailMaintenanceRequiredVariable.Value = isRequired;
@@ -1197,7 +1197,7 @@ namespace KX2RobotOpcUa
                     try
                     {
                         int moveCount = 0;
-                        short result = _kx2Robot.MoveCountGet(ref moveCount);
+                        short result = _kx2Robot2.MoveCountGet(ref moveCount);
                         if (result == 0)
                         {
                             _moveCountVariable.Value = moveCount;
@@ -1216,7 +1216,7 @@ namespace KX2RobotOpcUa
                     try
                     {
                         string swVersion = "";
-                        short result = _kx2Robot.BarcodeReaderGetSoftwareVersion(ref swVersion);
+                        short result = _kx2Robot2.BarcodeReaderGetSoftwareVersion(ref swVersion);
                         if (result == 0)
                         {
                             _barcodeReaderVersionVariable.Value = swVersion;
@@ -1233,7 +1233,7 @@ namespace KX2RobotOpcUa
                 {
                     try
                     {
-                        byte portNum = _kx2Robot.GetBarcodeReaderSerialPort();
+                        byte portNum = _kx2Robot2.GetBarcodeReaderSerialPort();
                         _barcodeReaderPortVariable.Value = portNum;
                     }
                     catch (Exception ex)
@@ -1249,7 +1249,7 @@ namespace KX2RobotOpcUa
                     if (_axis1PositionVariable != null)
                     {
                         double position = 0.0;
-                        short result = _kx2Robot.MotorGetCurrentPosition(1, ref position);
+                        short result = _kx2Robot2.MotorGetCurrentPosition(1, ref position);
                         if (result == 0)
                         {
                             _axis1PositionVariable.Value = position;
@@ -1260,7 +1260,7 @@ namespace KX2RobotOpcUa
                     if (_axis2PositionVariable != null)
                     {
                         double position = 0.0;
-                        short result = _kx2Robot.MotorGetCurrentPosition(2, ref position);
+                        short result = _kx2Robot2.MotorGetCurrentPosition(2, ref position);
                         if (result == 0)
                         {
                             _axis2PositionVariable.Value = position;
@@ -1271,7 +1271,7 @@ namespace KX2RobotOpcUa
                     if (_axis3PositionVariable != null)
                     {
                         double position = 0.0;
-                        short result = _kx2Robot.MotorGetCurrentPosition(3, ref position);
+                        short result = _kx2Robot2.MotorGetCurrentPosition(3, ref position);
                         if (result == 0)
                         {
                             _axis3PositionVariable.Value = position;
@@ -1282,7 +1282,7 @@ namespace KX2RobotOpcUa
                     if (_axis4PositionVariable != null)
                     {
                         double position = 0.0;
-                        short result = _kx2Robot.MotorGetCurrentPosition(4, ref position);
+                        short result = _kx2Robot2.MotorGetCurrentPosition(4, ref position);
                         if (result == 0)
                         {
                             _axis4PositionVariable.Value = position;
@@ -1293,7 +1293,7 @@ namespace KX2RobotOpcUa
                     if (_axis5PositionVariable != null && _isRobotOnRailVariable != null && (bool)_isRobotOnRailVariable.Value)
                     {
                         double position = 0.0;
-                        short result = _kx2Robot.MotorGetCurrentPosition(5, ref position);
+                        short result = _kx2Robot2.MotorGetCurrentPosition(5, ref position);
                         if (result == 0)
                         {
                             _axis5PositionVariable.Value = position;
@@ -1327,7 +1327,7 @@ namespace KX2RobotOpcUa
             try
             {
                 // Initialize the robot
-                int result = _kx2Robot.Initialize();
+                int result = _kx2Robot2.Initialize();
 
                 // Return the result
                 outputArguments.Add(result);
@@ -1352,7 +1352,7 @@ namespace KX2RobotOpcUa
             try
             {
                 // Shutdown the robot
-                _kx2Robot.ShutDown();
+                _kx2Robot2.ShutDown();
 
                 return ServiceResult.Good;
             }
@@ -1387,7 +1387,7 @@ namespace KX2RobotOpcUa
                 // Move the robot
                 int calculatedTime = 0;
                 byte index = 0;
-                int result = _kx2Robot.MoveAbsoluteAllAxes(positions, velocity, acceleration, true, ref calculatedTime, false, ref index);
+                int result = _kx2Robot2.MoveAbsoluteAllAxes(positions, velocity, acceleration, true, ref calculatedTime, false, ref index);
 
                 // Return the result
                 outputArguments.Add(result);
@@ -1420,7 +1420,7 @@ namespace KX2RobotOpcUa
                 // Move the robot
                 int calculatedTime = 0;
                 byte index = 0;
-                int result = _kx2Robot.MoveRelativeSingleAxis(axisNumber, distance, velocity, acceleration, true, ref calculatedTime, false, ref index);
+                int result = _kx2Robot2.MoveRelativeSingleAxis(axisNumber, distance, velocity, acceleration, true, ref calculatedTime, false, ref index);
 
                 // Return the result
                 outputArguments.Add(result);
@@ -1449,7 +1449,7 @@ namespace KX2RobotOpcUa
 
                 // Load the teach points
                 short fileNumAxes = 0;
-                short result = _kx2Robot.TeachPointsLoad(filePath, true, ref fileNumAxes);
+                short result = _kx2Robot2.TeachPointsLoad(filePath, true, ref fileNumAxes);
 
                 // Return the result
                 outputArguments.Add(result);
@@ -1481,7 +1481,7 @@ namespace KX2RobotOpcUa
                 // Move to the teach point
                 int timeoutMsec = 0;
                 byte index = 0;
-                int result = _kx2Robot.TeachPointMoveTo(teachPointName, velocity, acceleration, true, ref timeoutMsec, false, ref index);
+                int result = _kx2Robot2.TeachPointMoveTo(teachPointName, velocity, acceleration, true, ref timeoutMsec, false, ref index);
 
                 // Return the result
                 outputArguments.Add(result);
@@ -1509,7 +1509,7 @@ namespace KX2RobotOpcUa
                 string sequenceName = (string)inputArguments[0];
 
                 // Get the sequence file path
-                string sequenceFilePath = _kx2Robot.GetDefaultSequenceFile();
+                string sequenceFilePath = _kx2Robot2.GetDefaultSequenceFile();
                 if (string.IsNullOrEmpty(sequenceFilePath))
                 {
                     outputArguments.Add(-1); // Error: No sequence file loaded
@@ -1517,7 +1517,7 @@ namespace KX2RobotOpcUa
                 }
 
                 // Execute the sequence
-                int result = _kx2Robot.ScriptRun(sequenceFilePath, sequenceName, true);
+                int result = _kx2Robot2.ScriptRun(sequenceFilePath, sequenceName, true);
 
                 // Return the result
                 outputArguments.Add(result);
@@ -1552,7 +1552,7 @@ namespace KX2RobotOpcUa
                 }
 
                 // Get the sequence file path
-                string sequenceFilePath = _kx2Robot.GetDefaultSequenceFile();
+                string sequenceFilePath = _kx2Robot2.GetDefaultSequenceFile();
                 if (string.IsNullOrEmpty(sequenceFilePath) || !File.Exists(sequenceFilePath))
                 {
                     outputArguments.Add(-1); // Error: No sequence file loaded or file doesn't exist
@@ -1580,7 +1580,7 @@ namespace KX2RobotOpcUa
         {
             try
             {
-                string sequenceFilePath = _kx2Robot.GetDefaultSequenceFile();
+                string sequenceFilePath = _kx2Robot2.GetDefaultSequenceFile();
                 if (string.IsNullOrEmpty(sequenceFilePath) || !File.Exists(sequenceFilePath))
                     return -1; // No sequence file loaded or file doesn't exist
 
@@ -1648,7 +1648,7 @@ namespace KX2RobotOpcUa
                 string barcode = "";
                 Console.WriteLine($"Calling BarcodeRead with parameters: WaitUntilDone=true, ReadMode={eBCRReadMode.SingleRead}, ReadTime={eBCRReadTime.TwoSeconds}");
 
-                short result = _kx2Robot.BarcodeRead(true, eBCRReadMode.SingleRead, eBCRReadTime.TwoSeconds, ref barcode);
+                short result = _kx2Robot2.BarcodeRead(true, eBCRReadMode.SingleRead, eBCRReadTime.TwoSeconds, ref barcode);
 
                 Console.WriteLine($"BarcodeRead returned result code: {result}");
                 Console.WriteLine($"Barcode read: '{barcode}'");
@@ -1661,11 +1661,11 @@ namespace KX2RobotOpcUa
                 }
                 else if (result != 0)
                 {
-                    string errorDescription = _kx2Robot.GetErrorCode(result);
+                    string errorDescription = _kx2Robot2.GetErrorCode(result);
                     Console.WriteLine($"Error Description: {errorDescription}");
 
                     // Also get Error Code 1 for more information as mentioned in the error message
-                    string errorCode1Description = _kx2Robot.GetErrorCode(1);
+                    string errorCode1Description = _kx2Robot2.GetErrorCode(1);
                     Console.WriteLine($"Error Code 1 Description: {errorCode1Description}");
 
                     // Return empty string if there was an error
@@ -1714,34 +1714,41 @@ namespace KX2RobotOpcUa
                 // Get the input arguments
                 string filePath = (string)inputArguments[0];
 
-                // Validate file path
+                // Validate the file path
                 if (string.IsNullOrEmpty(filePath))
                 {
-                    outputArguments.Add(-1); // Error: Invalid file path
+                    outputArguments.Add(-1); // Invalid path
                     return ServiceResult.Good;
                 }
 
+                // Check if file exists
                 if (!File.Exists(filePath))
                 {
-                    outputArguments.Add(-2); // Error: File does not exist
+                    outputArguments.Add(-2); // File not found
                     return ServiceResult.Good;
                 }
 
-                // Set the default teach points file
-                _kx2Robot.SetDefaultTeachPointFile(filePath);
+                try
+                {
+                    // Set the default teach points file using the DLL method
+                    _kx2Robot2.SetDefaultTeachPointFile(filePath);
 
-                // Refresh the teach points nodes to reflect the new file
-                RefreshTeachPointsNodes();
+                    // Refresh the teach points nodes to reflect the new file
+                    RefreshTeachPointsNodes();
 
-                // Return success
-                outputArguments.Add(0);
-
-                return ServiceResult.Good;
+                    outputArguments.Add(0); // Success
+                    return ServiceResult.Good;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error setting teach points file: {ex.Message}");
+                    outputArguments.Add(-3); // Exception occurred
+                    return ServiceResult.Good;
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error setting teach points file: {ex.Message}");
-                outputArguments.Add(-3); // Error: Exception occurred
+                outputArguments.Add(-3); // Exception occurred
                 return new ServiceResult(ex);
             }
         }
@@ -1760,53 +1767,68 @@ namespace KX2RobotOpcUa
                 // Get the input arguments
                 string filePath = (string)inputArguments[0];
 
-                // Validate file path
+                // Validate the file path
                 if (string.IsNullOrEmpty(filePath))
                 {
-                    outputArguments.Add(-1); // Error: Invalid file path
+                    outputArguments.Add(-1); // Invalid path
                     return ServiceResult.Good;
                 }
 
+                // Check if file exists
                 if (!File.Exists(filePath))
                 {
-                    outputArguments.Add(-2); // Error: File does not exist
+                    outputArguments.Add(-2); // File not found
                     return ServiceResult.Good;
                 }
 
-                // Set the default sequence file
-                _kx2Robot.SetDefaultSequenceFile(filePath);
+                try
+                {
+                    // Set the default sequence file using the DLL method
+                    _kx2Robot2.SetDefaultSequenceFile(filePath);
 
-                // Refresh the sequences nodes to reflect the new file
-                RefreshSequencesNodes();
+                    // Refresh the sequences nodes to reflect the new file
+                    RefreshSequencesNodes();
 
-                // Return success
-                outputArguments.Add(0);
-
-                return ServiceResult.Good;
+                    outputArguments.Add(0); // Success
+                    return ServiceResult.Good;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error setting sequence file: {ex.Message}");
+                    outputArguments.Add(-3); // Exception occurred
+                    return ServiceResult.Good;
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error setting sequence file: {ex.Message}");
-                outputArguments.Add(-3); // Error: Exception occurred
+                outputArguments.Add(-3); // Exception occurred
                 return new ServiceResult(ex);
             }
         }
 
         /// <summary>
-        /// Refreshes the teach points nodes after a file change.
+        /// Refreshes the teach points nodes by clearing existing nodes and recreating them.
         /// </summary>
         private void RefreshTeachPointsNodes()
         {
             try
             {
-                // Clear existing teach points nodes
-                if (_teachPointsFolder != null)
+                lock (Lock)
                 {
-                    _teachPointsFolder.ClearChildren();
-                }
+                    // Clear existing teach points nodes
+                    if (_teachPointsFolder != null)
+                    {
+                        // Remove all child nodes
+                        var childNodes = _teachPointsFolder.GetChildren(SystemContext).ToList();
+                        foreach (var child in childNodes)
+                        {
+                            _teachPointsFolder.RemoveChild(child);
+                        }
+                    }
 
-                // Recreate teach points nodes with the new file
-                CreateTeachPointsNodes();
+                    // Recreate teach points nodes with new file content
+                    CreateTeachPointsNodes();
+                }
             }
             catch (Exception ex)
             {
@@ -1815,20 +1837,28 @@ namespace KX2RobotOpcUa
         }
 
         /// <summary>
-        /// Refreshes the sequences nodes after a file change.
+        /// Refreshes the sequences nodes by clearing existing nodes and recreating them.
         /// </summary>
         private void RefreshSequencesNodes()
         {
             try
             {
-                // Clear existing sequences nodes
-                if (_sequencesFolder != null)
+                lock (Lock)
                 {
-                    _sequencesFolder.ClearChildren();
-                }
+                    // Clear existing sequences nodes
+                    if (_sequencesFolder != null)
+                    {
+                        // Remove all child nodes
+                        var childNodes = _sequencesFolder.GetChildren(SystemContext).ToList();
+                        foreach (var child in childNodes)
+                        {
+                            _sequencesFolder.RemoveChild(child);
+                        }
+                    }
 
-                // Recreate sequences nodes with the new file
-                CreateSequencesNodes();
+                    // Recreate sequences nodes with new file content
+                    CreateSequencesNodes();
+                }
             }
             catch (Exception ex)
             {

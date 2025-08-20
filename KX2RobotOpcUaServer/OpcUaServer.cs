@@ -282,10 +282,15 @@ namespace LabEquipmentOpcUa
             // Create node managers differently using factories
             var nodeManagerFactories = new List<INodeManagerFactory>();
 
-            // Create the KX2 robot factory
+            // Create the KX2 robot factory (Robot 1)
             var kx2Factory = new KX2RobotOpcUa.KX2RobotNodeManagerFactory(this);
             nodeManagerFactories.Add(kx2Factory);
             _equipmentManagers.Add((IEquipmentNodeManager)kx2Factory);
+
+            // Create the KX2 robot 2 factory (Robot 2)
+            var kx2Robot2Factory = new KX2Robot2OpcUa.KX2Robot2NodeManagerFactory(this);
+            nodeManagerFactories.Add(kx2Robot2Factory);
+            _equipmentManagers.Add((IEquipmentNodeManager)kx2Robot2Factory);
 
             // Create the Tecan factory
             var tecanFactory = new TecanOpcUa.TecanNodeManagerFactory(this);
