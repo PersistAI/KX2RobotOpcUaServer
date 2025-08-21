@@ -433,6 +433,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="KX2Robot2NodeManagerFactory.cs" />
+    <Compile Include="KX2Robot2OpcUaServer.cs" />
     <Compile Include="KX2RobotNodeManagerFactory.cs" />
     <Compile Include="KX2RobotOpcUaServer.cs" />
     <Compile Include="OpcUaServer.cs" />

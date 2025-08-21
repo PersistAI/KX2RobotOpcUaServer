@@ -1733,8 +1733,6 @@ namespace KX2Robot2OpcUa
                     // Set the default teach points file using the DLL method
                     _kx2Robot2.SetDefaultTeachPointFile(filePath);
 
-                    // Refresh the teach points nodes to reflect the new file
-                    RefreshTeachPointsNodes();
 
                     outputArguments.Add(0); // Success
                     return ServiceResult.Good;
@@ -1786,9 +1784,6 @@ namespace KX2Robot2OpcUa
                     // Set the default sequence file using the DLL method
                     _kx2Robot2.SetDefaultSequenceFile(filePath);
 
-                    // Refresh the sequences nodes to reflect the new file
-                    RefreshSequencesNodes();
-
                     outputArguments.Add(0); // Success
                     return ServiceResult.Good;
                 }
@@ -1806,65 +1801,6 @@ namespace KX2Robot2OpcUa
             }
         }
 
-        /// <summary>
-        /// Refreshes the teach points nodes by clearing existing nodes and recreating them.
-        /// </summary>
-        private void RefreshTeachPointsNodes()
-        {
-            try
-            {
-                lock (Lock)
-                {
-                    // Clear existing teach points nodes
-                    if (_teachPointsFolder != null)
-                    {
-                        // Remove all child nodes
-                        var childNodes = _teachPointsFolder.GetChildren(SystemContext).ToList();
-                        foreach (var child in childNodes)
-                        {
-                            _teachPointsFolder.RemoveChild(child);
-                        }
-                    }
-
-                    // Recreate teach points nodes with new file content
-                    CreateTeachPointsNodes();
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error refreshing teach points nodes: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Refreshes the sequences nodes by clearing existing nodes and recreating them.
-        /// </summary>
-        private void RefreshSequencesNodes()
-        {
-            try
-            {
-                lock (Lock)
-                {
-                    // Clear existing sequences nodes
-                    if (_sequencesFolder != null)
-                    {
-                        // Remove all child nodes
-                        var childNodes = _sequencesFolder.GetChildren(SystemContext).ToList();
-                        foreach (var child in childNodes)
-                        {
-                            _sequencesFolder.RemoveChild(child);
-                        }
-                    }
-
-                    // Recreate sequences nodes with new file content
-                    CreateSequencesNodes();
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error refreshing sequences nodes: {ex.Message}");
-            }
-        }
         #endregion
     }
 }

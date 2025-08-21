@@ -1730,9 +1730,6 @@ namespace KX2RobotOpcUa
                 // Set the default teach points file
                 _kx2Robot.SetDefaultTeachPointFile(filePath);
 
-                // Refresh the teach points nodes to reflect the new file
-                RefreshTeachPointsNodes();
-
                 // Return success
                 outputArguments.Add(0);
 
@@ -1776,9 +1773,6 @@ namespace KX2RobotOpcUa
                 // Set the default sequence file
                 _kx2Robot.SetDefaultSequenceFile(filePath);
 
-                // Refresh the sequences nodes to reflect the new file
-                RefreshSequencesNodes();
-
                 // Return success
                 outputArguments.Add(0);
 
@@ -1795,46 +1789,12 @@ namespace KX2RobotOpcUa
         /// <summary>
         /// Refreshes the teach points nodes after a file change.
         /// </summary>
-        private void RefreshTeachPointsNodes()
-        {
-            try
-            {
-                // Clear existing teach points nodes
-                if (_teachPointsFolder != null)
-                {
-                    _teachPointsFolder.ClearChildren();
-                }
-
-                // Recreate teach points nodes with the new file
-                CreateTeachPointsNodes();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error refreshing teach points nodes: {ex.Message}");
-            }
-        }
+        
 
         /// <summary>
         /// Refreshes the sequences nodes after a file change.
         /// </summary>
-        private void RefreshSequencesNodes()
-        {
-            try
-            {
-                // Clear existing sequences nodes
-                if (_sequencesFolder != null)
-                {
-                    _sequencesFolder.ClearChildren();
-                }
-
-                // Recreate sequences nodes with the new file
-                CreateSequencesNodes();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error refreshing sequences nodes: {ex.Message}");
-            }
-        }
+        
         #endregion
     }
 }
