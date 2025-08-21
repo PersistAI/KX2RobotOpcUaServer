@@ -56,6 +56,10 @@ namespace KX2RobotOpcUa
         #endregion
 
         #region Private Fields
+        // CAN Device Validation Constants
+        private const string EXPECTED_CAN_DEVICE = "PCAN_USB 1 (51h)";
+        private const int CAN_DEVICE_MISMATCH_ERROR = -999;
+        
         private KX2RobotControl _kx2Robot;
         private ushort _namespaceIndex;
         private uint _lastUsedId;  // Changed from long to uint for NodeId compatibility
@@ -129,19 +133,37 @@ namespace KX2RobotOpcUa
         {
             try
             {
+                // Configure PCAN device for Robot 1
+                Console.WriteLine("Configuring Robot 1 PCAN device...");
+                string robot1PCANDevice = EXPECTED_CAN_DEVICE;
+                _kx2Robot.SetCANDevice(robot1PCANDevice);
+                
+                // Validate CAN device assignment
+                string actualDevice = _kx2Robot.GetCANDevice();
+                if (actualDevice == robot1PCANDevice)
+                {
+                    Console.WriteLine($"Robot 1 PCAN device validated successfully: {actualDevice}");
+                }
+                else
+                {
+                    string errorMsg = $"Robot 1 PCAN device validation failed! Expected: {robot1PCANDevice}, Actual: {actualDevice}";
+                    Console.WriteLine(errorMsg);
+                    throw new InvalidOperationException(errorMsg);
+                }
+
                 // Initialize the robot
-                Console.WriteLine("Initializing KX2 robot...");
+                Console.WriteLine("Initializing KX2 Robot 1...");
                 int result = _kx2Robot.Initialize();
                 if (result == 0)
-                    Console.WriteLine("KX2 robot initialized successfully.");
+                    Console.WriteLine("KX2 Robot 1 initialized successfully.");
                 else
-                    Console.WriteLine($"Failed to initialize KX2 robot: Error {result}");
+                    Console.WriteLine($"Failed to initialize KX2 Robot 1: Error {result}");
 
                 // Note: Teach points and sequence files are loaded by the factory
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error initializing KX2 robot: {ex.Message}");
+                Console.WriteLine($"Error initializing KX2 Robot 1: {ex.Message}");
                 throw;
             }
         }
@@ -1068,6 +1090,47 @@ namespace KX2RobotOpcUa
         }
 
         /// <summary>
+        /// Validates that the robot is using the expected CAN device.
+        /// If mismatch detected, automatically attempts to correct it.
+        /// </summary>
+        /// <param name="methodName">Name of the calling method for logging</param>
+        /// <returns>True if CAN device is correct or successfully corrected, false if correction fails</returns>
+        private bool ValidateCANDevice(string methodName)
+        {
+            try
+            {
+                string actualDevice = _kx2Robot.GetCANDevice();
+                if (actualDevice != EXPECTED_CAN_DEVICE)
+                {
+                    Console.WriteLine($"[{methodName}] CAN Device Mismatch detected! Expected: {EXPECTED_CAN_DEVICE}, Actual: {actualDevice}");
+                    Console.WriteLine($"[{methodName}] Attempting auto-correction...");
+                    
+                    // Auto-correct the CAN device
+                    _kx2Robot.SetCANDevice(EXPECTED_CAN_DEVICE);
+                    
+                    // Verify the correction
+                    string correctedDevice = _kx2Robot.GetCANDevice();
+                    if (correctedDevice == EXPECTED_CAN_DEVICE)
+                    {
+                        Console.WriteLine($"[{methodName}] CAN Device auto-corrected successfully to: {correctedDevice}");
+                        return true;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[{methodName}] CAN Device auto-correction failed! Still: {correctedDevice}");
+                        return false;
+                    }
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[{methodName}] Error in CAN device validation/correction: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Updates the robot status.
         /// </summary>
         private void UpdateRobotStatus(object state)
@@ -1326,6 +1389,13 @@ namespace KX2RobotOpcUa
         {
             try
             {
+                // Validate CAN device before proceeding
+                if (!ValidateCANDevice("OnInitialize"))
+                {
+                    outputArguments.Add(CAN_DEVICE_MISMATCH_ERROR);
+                    return ServiceResult.Good;
+                }
+
                 // 1. Set PCAN device to "PCAN_USB 1 (51h)"
                 Console.WriteLine("OPC UA Initialize: Configuring Robot 1 PCAN device...");
                 string robot1PCANDevice = "PCAN_USB 1 (51h)";
@@ -1375,6 +1445,13 @@ namespace KX2RobotOpcUa
         {
             try
             {
+                // Validate CAN device before proceeding
+                if (!ValidateCANDevice("OnShutdown"))
+                {
+                    outputArguments.Add(CAN_DEVICE_MISMATCH_ERROR);
+                    return ServiceResult.Good;
+                }
+
                 // Shutdown the robot
                 _kx2Robot.ShutDown();
 
@@ -1397,6 +1474,13 @@ namespace KX2RobotOpcUa
         {
             try
             {
+                // Validate CAN device before proceeding
+                if (!ValidateCANDevice("OnMoveAbsolute"))
+                {
+                    outputArguments.Add(CAN_DEVICE_MISMATCH_ERROR);
+                    return ServiceResult.Good;
+                }
+
                 // Get the input arguments
                 double axis1 = (double)inputArguments[0];
                 double axis2 = (double)inputArguments[1];
@@ -1435,6 +1519,13 @@ namespace KX2RobotOpcUa
         {
             try
             {
+                // Validate CAN device before proceeding
+                if (!ValidateCANDevice("OnMoveRelative"))
+                {
+                    outputArguments.Add(CAN_DEVICE_MISMATCH_ERROR);
+                    return ServiceResult.Good;
+                }
+
                 // Get the input arguments
                 short axisNumber = (short)inputArguments[0];
                 double distance = (double)inputArguments[1];
@@ -1468,6 +1559,13 @@ namespace KX2RobotOpcUa
         {
             try
             {
+                // Validate CAN device before proceeding
+                if (!ValidateCANDevice("OnLoadTeachPoints"))
+                {
+                    outputArguments.Add(CAN_DEVICE_MISMATCH_ERROR);
+                    return ServiceResult.Good;
+                }
+
                 // Get the input arguments
                 string filePath = (string)inputArguments[0];
 
@@ -1497,6 +1595,13 @@ namespace KX2RobotOpcUa
         {
             try
             {
+                // Validate CAN device before proceeding
+                if (!ValidateCANDevice("OnMoveToTeachPoint"))
+                {
+                    outputArguments.Add(CAN_DEVICE_MISMATCH_ERROR);
+                    return ServiceResult.Good;
+                }
+
                 // Get the input arguments
                 string teachPointName = (string)inputArguments[0];
                 double velocity = (double)inputArguments[1];
@@ -1529,6 +1634,13 @@ namespace KX2RobotOpcUa
         {
             try
             {
+                // Validate CAN device before proceeding
+                if (!ValidateCANDevice("OnExecuteSequence"))
+                {
+                    outputArguments.Add(CAN_DEVICE_MISMATCH_ERROR);
+                    return ServiceResult.Good;
+                }
+
                 // Get the input arguments
                 string sequenceName = (string)inputArguments[0];
 
@@ -1565,6 +1677,13 @@ namespace KX2RobotOpcUa
         {
             try
             {
+                // Validate CAN device before proceeding
+                if (!ValidateCANDevice("OnUpdateVariable"))
+                {
+                    outputArguments.Add(CAN_DEVICE_MISMATCH_ERROR);
+                    return ServiceResult.Good;
+                }
+
                 // Get the input arguments
                 string variableName = (string)inputArguments[0];
                 string value = (string)inputArguments[1];
@@ -1667,6 +1786,13 @@ namespace KX2RobotOpcUa
         {
             try
             {
+                // Validate CAN device before proceeding
+                if (!ValidateCANDevice("OnReadBarcode"))
+                {
+                    outputArguments.Add("");  // Return empty barcode for CAN device mismatch
+                    return ServiceResult.Good;
+                }
+
                 Console.WriteLine("OnReadBarcode method called");
                 // Read the barcode with default settings (SingleRead mode, 2 second timeout)
                 string barcode = "";
@@ -1735,6 +1861,13 @@ namespace KX2RobotOpcUa
         {
             try
             {
+                // Validate CAN device before proceeding
+                if (!ValidateCANDevice("OnSetTeachPointsFile"))
+                {
+                    outputArguments.Add(CAN_DEVICE_MISMATCH_ERROR);
+                    return ServiceResult.Good;
+                }
+
                 // Get the input arguments
                 string filePath = (string)inputArguments[0];
 
@@ -1778,6 +1911,13 @@ namespace KX2RobotOpcUa
         {
             try
             {
+                // Validate CAN device before proceeding
+                if (!ValidateCANDevice("OnSetSequenceFile"))
+                {
+                    outputArguments.Add(CAN_DEVICE_MISMATCH_ERROR);
+                    return ServiceResult.Good;
+                }
+
                 // Get the input arguments
                 string filePath = (string)inputArguments[0];
 
