@@ -1326,8 +1326,30 @@ namespace KX2RobotOpcUa
         {
             try
             {
-                // Initialize the robot
+                // 1. Set PCAN device to "PCAN_USB 1 (51h)"
+                Console.WriteLine("OPC UA Initialize: Configuring Robot 1 PCAN device...");
+                string robot1PCANDevice = "PCAN_USB 1 (51h)";
+                _kx2Robot.SetCANDevice(robot1PCANDevice);
+                
+                // 2. Validate the device assignment
+                string actualDevice = _kx2Robot.GetCANDevice();
+                if (actualDevice != robot1PCANDevice)
+                {
+                    string errorMsg = $"OPC UA Initialize: Robot 1 PCAN device validation failed! Expected: {robot1PCANDevice}, Actual: {actualDevice}";
+                    Console.WriteLine(errorMsg);
+                    outputArguments.Add(-1); // Error code for validation failure
+                    return ServiceResult.Good;
+                }
+                Console.WriteLine($"OPC UA Initialize: Robot 1 PCAN device validated successfully: {actualDevice}");
+                
+                // 3. Call _kx2Robot.Initialize()
+                Console.WriteLine("OPC UA Initialize: Initializing KX2 Robot 1...");
                 int result = _kx2Robot.Initialize();
+                
+                if (result == 0)
+                    Console.WriteLine("OPC UA Initialize: KX2 Robot 1 initialized successfully.");
+                else
+                    Console.WriteLine($"OPC UA Initialize: Failed to initialize KX2 Robot 1: Error {result}");
 
                 // Return the result
                 outputArguments.Add(result);
@@ -1336,6 +1358,8 @@ namespace KX2RobotOpcUa
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"OPC UA Initialize: Error initializing Robot 1: {ex.Message}");
+                outputArguments.Add(-2); // Error code for exception
                 return new ServiceResult(ex);
             }
         }
