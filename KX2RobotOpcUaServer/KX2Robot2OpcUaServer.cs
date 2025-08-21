@@ -174,7 +174,7 @@ namespace KX2Robot2OpcUa
         {
             try
             {
-                Console.WriteLine("KX2RobotNodeManager.CreateAddressSpace - Starting address space creation");
+                Console.WriteLine("KX2Robot2NodeManager.CreateAddressSpace - Starting address space creation");
 
                 lock (Lock)
                 {

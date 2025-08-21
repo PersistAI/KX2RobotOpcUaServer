@@ -1770,17 +1770,24 @@ namespace KX2RobotOpcUa
                     return ServiceResult.Good;
                 }
 
-                // Set the default sequence file
-                _kx2Robot.SetDefaultSequenceFile(filePath);
+                try
+                {
+                    // Set the default sequence file
+                    _kx2Robot.SetDefaultSequenceFile(filePath);
 
-                // Return success
-                outputArguments.Add(0);
-
-                return ServiceResult.Good;
+                    // Return success
+                    outputArguments.Add(0);
+                    return ServiceResult.Good;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error setting sequence file: {ex.Message}");
+                    outputArguments.Add(-3); // Error: Exception occurred
+                    return ServiceResult.Good;
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error setting sequence file: {ex.Message}");
                 outputArguments.Add(-3); // Error: Exception occurred
                 return new ServiceResult(ex);
             }

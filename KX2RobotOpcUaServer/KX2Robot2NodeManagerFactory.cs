@@ -75,7 +75,19 @@ namespace KX2Robot2OpcUa
                 Console.WriteLine("Configuring Robot 2 PCAN device...");
                 string robot2PCANDevice = "PCAN_USB 2 (52h)";
                 _kx2Robot2.SetCANDevice(robot2PCANDevice);
-                Console.WriteLine($"Robot 2 PCAN device configured to: {robot2PCANDevice}");
+                
+                // Validate CAN device assignment
+                string actualDevice = _kx2Robot2.GetCANDevice();
+                if (actualDevice == robot2PCANDevice)
+                {
+                    Console.WriteLine($"Robot 2 PCAN device validated successfully: {actualDevice}");
+                }
+                else
+                {
+                    string errorMsg = $"Robot 2 PCAN device validation failed! Expected: {robot2PCANDevice}, Actual: {actualDevice}";
+                    Console.WriteLine(errorMsg);
+                    throw new InvalidOperationException(errorMsg);
+                }
 
                 // Initialize Robot 2
                 Console.WriteLine("Initializing KX2 Robot 2...");
