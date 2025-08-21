@@ -47,9 +47,6 @@ namespace KX2Robot2OpcUa
                 {
                     Console.WriteLine("Creating new KX2RobotControl instance for Robot 2...");
                     _kx2Robot2 = new KX2RobotControlNamespace.KX2RobotControl();
-                    
-                    // Configure Robot 2 to use PCAN_USB 2 (52h)
-                    ConfigureRobot2PCANDevice();
                 }
 
                 // Create the node manager with the server and configuration
@@ -68,34 +65,18 @@ namespace KX2Robot2OpcUa
         }
 
         /// <summary>
-        /// Configures Robot 2 to use PCAN_USB 2 (52h) device
-        /// </summary>
-        private void ConfigureRobot2PCANDevice()
-        {
-            try
-            {
-                Console.WriteLine("Configuring Robot 2 PCAN device...");
-                
-                // Set Robot 2 to use PCAN_USB 2 (52h)
-                string robot2PCANDevice = "PCAN_USB 2 (52h)";
-                _kx2Robot2.SetCANDevice(robot2PCANDevice);
-                
-                Console.WriteLine($"Robot 2 PCAN device configured to: {robot2PCANDevice}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error configuring Robot 2 PCAN device: {ex.Message}");
-                throw;
-            }
-        }
-
-        /// <summary>
         /// Initializes the equipment.
         /// </summary>
         public void Initialize()
         {
             try
             {
+                // Configure PCAN device for Robot 2
+                Console.WriteLine("Configuring Robot 2 PCAN device...");
+                string robot2PCANDevice = "PCAN_USB 2 (52h)";
+                _kx2Robot2.SetCANDevice(robot2PCANDevice);
+                Console.WriteLine($"Robot 2 PCAN device configured to: {robot2PCANDevice}");
+
                 // Initialize Robot 2
                 Console.WriteLine("Initializing KX2 Robot 2...");
                 int result = _kx2Robot2.Initialize();

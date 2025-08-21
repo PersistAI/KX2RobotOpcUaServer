@@ -71,13 +71,19 @@ namespace KX2RobotOpcUa
         {
             try
             {
+                // Configure PCAN device for Robot 1
+                Console.WriteLine("Configuring Robot 1 PCAN device...");
+                string robot1PCANDevice = "PCAN_USB 1 (51h)";
+                _kx2Robot.SetCANDevice(robot1PCANDevice);
+                Console.WriteLine($"Robot 1 PCAN device configured to: {robot1PCANDevice}");
+
                 // Initialize the robot
-                Console.WriteLine("Initializing KX2 robot...");
+                Console.WriteLine("Initializing KX2 Robot 1...");
                 int result = _kx2Robot.Initialize();
                 if (result == 0)
-                    Console.WriteLine("KX2 robot initialized successfully.");
+                    Console.WriteLine("KX2 Robot 1 initialized successfully.");
                 else
-                    Console.WriteLine($"Failed to initialize KX2 robot: Error {result}");
+                    Console.WriteLine($"Failed to initialize KX2 Robot 1: Error {result}");
 
                 // Load default teach points and sequence files
                 LoadDefaultTeachPoints();
@@ -85,7 +91,7 @@ namespace KX2RobotOpcUa
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error initializing KX2 robot: {ex.Message}");
+                Console.WriteLine($"Error initializing KX2 Robot 1: {ex.Message}");
                 throw;
             }
         }
